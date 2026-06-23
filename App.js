@@ -1,117 +1,96 @@
 import './global.css';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppShell } from './components/Layout';
-import LocationList from './components/LocationList';
-import {
-  AppMenu,
-  LocationAlarmModal,
-  LocationFormModal,
-  ReadyTimeModal,
-  RushHourPeakModal,
-} from './components/Modals';
+import BottomNav from './components/BottomNav';
+import TimeLogScreen from './components/TimeLogScreen';
+import TripPlannerScreen from './components/TripPlannerScreen';
 import { useAppData } from './hooks/useAppData';
+import { useTimeLog } from './hooks/useTimeLog';
+import { prepareStorage } from './storage/forceFirstRun';
 
 export default function App() {
+  const [storageReady, setStorageReady] = useState(false);
+
+  useEffect(() => {
+    prepareStorage()
+      .catch((error) => console.error('Storage prep failed:', error))
+      .finally(() => setStorageReady(true));
+  }, []);
+
+  if (!storageReady) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-gray-50" edges={['top', 'left', 'right']}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </SafeAreaView>
+    );
+  }
+
+  return <AppContent />;
+}
+
+function AppContent() {
+  const [activeTab, setActiveTab] = useState('timelog');
+  const [addBlockOpen, setAddBlockOpen] = useState(false);
+  const timeLog = useTimeLog();
   const {
     locations,
     loading,
     readyTimeOffsetMinutes,
+    bufferTimeMinutes,
     rushHourPeakStart,
     rushHourPeakEnd,
     addLocation,
     updateLocation,
     updateReadyTimeOffset,
+    updateBufferTime,
     updateRushHourPeakTimes,
   } = useAppData();
-
-  const [editingLocation, setEditingLocation] = useState(undefined);
-  const [alarmLocation, setAlarmLocation] = useState(null);
-  const [readyTimeOpen, setReadyTimeOpen] = useState(false);
-  const [rushHourPeakOpen, setRushHourPeakOpen] = useState(false);
 
   async function handleSaveLocation(data) {
     if (data.id) await updateLocation(data);
     else await addLocation(data);
   }
 
-  const menuItems = [
-    {
-      id: 'edit-ready-time',
-      label: 'Edit Get-Ready Time',
-      onPress: () => setReadyTimeOpen(true),
-    },
-    {
-      id: 'edit-rush-hour-peak',
-      label: 'Edit Rush Hour Peak Times',
-      onPress: () => setRushHourPeakOpen(true),
-    },
-  ];
-
   return (
-    <SafeAreaView className="flex-1 items-center bg-gray-50">
+    <SafeAreaView className="flex-1 items-center bg-gray-50" edges={['top', 'left', 'right']}>
       <StatusBar style="auto" />
 
-      <AppShell className="flex-1">
-        <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-2">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-2xl font-bold text-gray-900">Locations</Text>
-            <AppMenu items={menuItems} />
-          </View>
-          <Pressable
-            className="mt-4 items-center rounded-xl bg-blue-500 py-3 active:bg-blue-600"
-            onPress={() => setEditingLocation(null)}
-          >
-            <Text className="text-base font-semibold text-white">Add Location</Text>
-          </Pressable>
+      <View className="w-full flex-1" style={{ maxWidth: 900 }}>
+        <View className="flex-1" style={{ display: activeTab === 'timelog' ? 'flex' : 'none' }}>
+          <TimeLogScreen
+            addBlockOpen={addBlockOpen}
+            onAddBlockClose={() => setAddBlockOpen(false)}
+            {...timeLog}
+          />
+        </View>
+        <View className="flex-1" style={{ display: activeTab === 'planner' ? 'flex' : 'none' }}>
+          <TripPlannerScreen
+            locations={locations}
+            loading={loading}
+            readyTimeOffsetMinutes={readyTimeOffsetMinutes}
+            bufferTimeMinutes={bufferTimeMinutes}
+            rushHourPeakStart={rushHourPeakStart}
+            rushHourPeakEnd={rushHourPeakEnd}
+            onSaveLocation={handleSaveLocation}
+            onUpdateReadyTime={updateReadyTimeOffset}
+            onUpdateBufferTime={updateBufferTime}
+            onUpdateRushHourPeakTimes={updateRushHourPeakTimes}
+          />
         </View>
 
-        {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#3b82f6" />
-          </View>
-        ) : (
-          <LocationList
-            locations={locations}
-            onSelect={setAlarmLocation}
-            onEdit={setEditingLocation}
+        <SafeAreaView edges={['bottom']}>
+          <BottomNav
+            activeTab={activeTab}
+            onTabPress={setActiveTab}
+            showAddBlock={activeTab === 'timelog'}
+            onAddBlock={() => setAddBlockOpen(true)}
           />
-        )}
-      </AppShell>
-
-      <LocationFormModal
-        visible={editingLocation !== undefined}
-        initialLocation={editingLocation}
-        onSave={handleSaveLocation}
-        onClose={() => setEditingLocation(undefined)}
-      />
-
-      <LocationAlarmModal
-        visible={alarmLocation != null}
-        location={alarmLocation}
-        readyTimeOffsetMinutes={readyTimeOffsetMinutes}
-        rushHourPeakStart={rushHourPeakStart}
-        rushHourPeakEnd={rushHourPeakEnd}
-        onClose={() => setAlarmLocation(null)}
-      />
-
-      <ReadyTimeModal
-        visible={readyTimeOpen}
-        readyTimeOffsetMinutes={readyTimeOffsetMinutes}
-        onSave={updateReadyTimeOffset}
-        onClose={() => setReadyTimeOpen(false)}
-      />
-
-      <RushHourPeakModal
-        visible={rushHourPeakOpen}
-        rushHourPeakStart={rushHourPeakStart}
-        rushHourPeakEnd={rushHourPeakEnd}
-        onSave={updateRushHourPeakTimes}
-        onClose={() => setRushHourPeakOpen(false)}
-      />
+        </SafeAreaView>
+      </View>
     </SafeAreaView>
   );
 }

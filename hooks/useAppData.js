@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   createLocation,
   loadAppData,
+  saveBufferTimeMinutes,
   saveReadyTimeOffsetMinutes,
   saveRushHourPeakTimes,
   upsertLocation,
@@ -11,6 +12,7 @@ import {
 export function useAppData() {
   const [locations, setLocations] = useState([]);
   const [readyTimeOffsetMinutes, setReadyTimeOffsetMinutes] = useState(null);
+  const [bufferTimeMinutes, setBufferTimeMinutes] = useState(null);
   const [rushHourPeakStart, setRushHourPeakStart] = useState('');
   const [rushHourPeakEnd, setRushHourPeakEnd] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ export function useAppData() {
         if (!active) return;
         setLocations(data.locations);
         setReadyTimeOffsetMinutes(data.readyTimeOffsetMinutes);
+        setBufferTimeMinutes(data.bufferTimeMinutes);
         setRushHourPeakStart(data.rushHourPeakStart);
         setRushHourPeakEnd(data.rushHourPeakEnd);
       })
@@ -48,6 +51,11 @@ export function useAppData() {
     setReadyTimeOffsetMinutes(saved);
   }, []);
 
+  const updateBufferTime = useCallback(async (minutes) => {
+    const saved = await saveBufferTimeMinutes(minutes);
+    setBufferTimeMinutes(saved);
+  }, []);
+
   const updateRushHourPeakTimes = useCallback(async (start, end) => {
     const saved = await saveRushHourPeakTimes(start, end);
     setRushHourPeakStart(saved.rushHourPeakStart);
@@ -58,11 +66,13 @@ export function useAppData() {
     locations,
     loading,
     readyTimeOffsetMinutes,
+    bufferTimeMinutes,
     rushHourPeakStart,
     rushHourPeakEnd,
     addLocation,
     updateLocation,
     updateReadyTimeOffset,
+    updateBufferTime,
     updateRushHourPeakTimes,
   };
 }

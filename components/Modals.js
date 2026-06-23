@@ -2,18 +2,20 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import {
-  DURATION_HINT,
-  START_TIME_HINT,
+  buildStartDateFromHrMin,
   calculateAlarmTime,
-  durationToDisplay,
-  formatAlarmEquation,
+  formatClockTimeValue,
+  formatDuration,
   formatRushHourCurveBreakdown,
   formatTime24,
-  parseDurationInput,
-  parseClockTimeInput,
-  parseStartTimeInput,
+  getTrafficColorClass,
+  hrMinToMinutes,
+  minutesToHrMin,
+  parseClockTimeValue,
 } from '../utils/time';
 import {
+  ClockTimeField,
+  DurationField,
   Field,
   FieldInput,
   ModalButton,
@@ -24,20 +26,22 @@ import {
 export function LocationFormModal({ visible, initialLocation, onSave, onClose }) {
   const isEditing = initialLocation != null;
   const [name, setName] = useState('');
-  const [allowance, setAllowance] = useState('');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
 
   useEffect(() => {
     if (!visible) return;
     setName(initialLocation?.name ?? '');
-    const minutes = initialLocation?.rushHourAllowanceMinutes;
-    setAllowance(minutes != null ? durationToDisplay(minutes) : '');
+    const { hours: h, minutes: m } = minutesToHrMin(initialLocation?.rushHourAllowanceMinutes ?? 60);
+    setHours(String(h));
+    setMinutes(String(m));
   }, [visible, initialLocation]);
 
   const trimmedName = name.trim();
 
   function handleSave() {
     if (!trimmedName) return;
-    const rushHourAllowanceMinutes = parseDurationInput(allowance) ?? 60;
+    const rushHourAllowanceMinutes = hrMinToMinutes(hours, minutes) || 60;
     onSave({ id: initialLocation?.id, name: trimmedName, rushHourAllowanceMinutes });
     onClose();
   }
@@ -61,11 +65,34 @@ export function LocationFormModal({ visible, initialLocation, onSave, onClose })
         <Field label="Name">
           <FieldInput value={name} onChangeText={setName} placeholder="Location name" />
         </Field>
-        <Field label="Rush hour allowance" hint={DURATION_HINT}>
-          <FieldInput value={allowance} onChangeText={setAllowance} placeholder="Enter rush hour allowance" />
+        <Field label="Rush hour allowance">
+          <DurationField
+            hours={hours}
+            minutes={minutes}
+            onChangeHours={setHours}
+            onChangeMinutes={setMinutes}
+          />
         </Field>
       </ModalPanel>
     </ModalShell>
+  );
+}
+
+function AlarmEquationDisplay({ breakdown, alarmTime }) {
+  const rushMinutes = breakdown.rushHourAllowanceMinutes;
+  const rushColor = getTrafficColorClass(rushMinutes);
+
+  return (
+    <Text className="mt-3 text-sm leading-6 text-gray-500">
+      {formatTime24(breakdown.startTime)} Start −{' '}
+      <Text className={`font-semibold ${rushColor}`}>
+        {formatDuration(rushMinutes)} Rush Hour
+      </Text>
+      {' '}− {formatDuration(breakdown.driveTimeMinutes)} Drive −{' '}
+      {formatDuration(breakdown.bufferTimeMinutes)} Buffer −{' '}
+      {formatDuration(breakdown.readyTimeMinutes)} to Get Ready ={' '}
+      {formatTime24(alarmTime)} Alarm
+    </Text>
   );
 }
 
@@ -73,35 +100,40 @@ export function LocationAlarmModal({
   visible,
   location,
   readyTimeOffsetMinutes,
+  bufferTimeMinutes,
   rushHourPeakStart,
   rushHourPeakEnd,
   onClose,
 }) {
   const [step, setStep] = useState('form');
-  const [startTimeValue, setStartTimeValue] = useState('');
-  const [driveTimeValue, setDriveTimeValue] = useState('');
+  const [startHours, setStartHours] = useState('');
+  const [startMinutes, setStartMinutes] = useState('');
+  const [driveHours, setDriveHours] = useState('');
+  const [driveMinutes, setDriveMinutes] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!visible) return;
     setStep('form');
-    setStartTimeValue('');
-    setDriveTimeValue('');
+    setStartHours('');
+    setStartMinutes('');
+    setDriveHours('');
+    setDriveMinutes('');
     setResult(null);
     setError('');
   }, [visible, location?.id]);
 
   function handleOk() {
-    const startTime = parseStartTimeInput(startTimeValue);
-    const driveTimeMinutes = parseDurationInput(driveTimeValue);
+    const startTime = buildStartDateFromHrMin(startHours, startMinutes);
+    const driveTimeMinutes = hrMinToMinutes(driveHours, driveMinutes);
 
     if (!startTime) {
-      setError('Enter a valid start time (see format examples above).');
+      setError('Enter a valid start time (HR 0–23, MIN 0–59).');
       return;
     }
-    if (driveTimeMinutes == null) {
-      setError('Enter a valid drive duration (see format examples above).');
+    if (driveTimeMinutes <= 0) {
+      setError('Enter a drive time greater than 0.');
       return;
     }
 
@@ -112,7 +144,8 @@ export function LocationAlarmModal({
         maxRushHourAllowanceMinutes: location.rushHourAllowanceMinutes,
         peakStartTime: rushHourPeakStart,
         peakEndTime: rushHourPeakEnd,
-        readyTimeMinutes: readyTimeOffsetMinutes,
+        readyTimeMinutes: readyTimeOffsetMinutes ?? 30,
+        bufferTimeMinutes: bufferTimeMinutes ?? 10,
       }),
     );
     setStep('result');
@@ -133,18 +166,20 @@ export function LocationAlarmModal({
             </>
           }
         >
-          <Field label="Start Time" hint={START_TIME_HINT}>
-            <FieldInput
-              value={startTimeValue}
-              onChangeText={setStartTimeValue}
-              placeholder="Enter start time"
+          <Field label="Start Time">
+            <ClockTimeField
+              hours={startHours}
+              minutes={startMinutes}
+              onChangeHours={setStartHours}
+              onChangeMinutes={setStartMinutes}
             />
           </Field>
-          <Field label="Drive Time" hint={DURATION_HINT}>
-            <FieldInput
-              value={driveTimeValue}
-              onChangeText={setDriveTimeValue}
-              placeholder="Enter drive time"
+          <Field label="Drive Time">
+            <DurationField
+              hours={driveHours}
+              minutes={driveMinutes}
+              onChangeHours={setDriveHours}
+              onChangeMinutes={setDriveMinutes}
             />
           </Field>
           {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
@@ -155,9 +190,7 @@ export function LocationAlarmModal({
           <Text className="mt-6 text-lg font-bold text-gray-900">
             SET ALARM FOR: {formatTime24(result.alarmTime)}
           </Text>
-          <Text className="mt-3 text-sm leading-6 text-gray-500">
-            {formatAlarmEquation(result.breakdown, result.alarmTime)}
-          </Text>
+          <AlarmEquationDisplay breakdown={result.breakdown} alarmTime={result.alarmTime} />
           <Text className="mt-2 text-xs leading-5 text-gray-400">
             {formatRushHourCurveBreakdown(result.breakdown.rushHour)}
           </Text>
@@ -171,17 +204,20 @@ export function LocationAlarmModal({
 }
 
 export function ReadyTimeModal({ visible, readyTimeOffsetMinutes, onSave, onClose }) {
-  const [value, setValue] = useState('');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
 
   useEffect(() => {
     if (!visible) return;
-    setValue(readyTimeOffsetMinutes != null ? durationToDisplay(readyTimeOffsetMinutes) : '');
+    const { hours: h, minutes: m } = minutesToHrMin(readyTimeOffsetMinutes ?? 30);
+    setHours(String(h));
+    setMinutes(String(m));
   }, [visible, readyTimeOffsetMinutes]);
 
   async function handleSave() {
-    const minutes = parseDurationInput(value);
-    if (minutes == null) return;
-    await onSave(minutes);
+    const total = hrMinToMinutes(hours, minutes);
+    if (total <= 0) return;
+    await onSave(total);
     onClose();
   }
 
@@ -196,8 +232,55 @@ export function ReadyTimeModal({ visible, readyTimeOffsetMinutes, onSave, onClos
           </>
         }
       >
-        <Field label="Get-ready time" hint={DURATION_HINT}>
-          <FieldInput value={value} onChangeText={setValue} placeholder="Enter get-ready time" />
+        <Field label="Get-ready time">
+          <DurationField
+            hours={hours}
+            minutes={minutes}
+            onChangeHours={setHours}
+            onChangeMinutes={setMinutes}
+          />
+        </Field>
+      </ModalPanel>
+    </ModalShell>
+  );
+}
+
+export function BufferTimeModal({ visible, bufferTimeMinutes, onSave, onClose }) {
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    const { hours: h, minutes: m } = minutesToHrMin(bufferTimeMinutes ?? 10);
+    setHours(String(h));
+    setMinutes(String(m));
+  }, [visible, bufferTimeMinutes]);
+
+  async function handleSave() {
+    const total = hrMinToMinutes(hours, minutes);
+    if (total < 0) return;
+    await onSave(total);
+    onClose();
+  }
+
+  return (
+    <ModalShell visible={visible} onClose={onClose}>
+      <ModalPanel
+        title="Edit Buffer Time"
+        actions={
+          <>
+            <ModalButton label="Cancel" onPress={onClose} />
+            <ModalButton label="Save" variant="primary" onPress={handleSave} />
+          </>
+        }
+      >
+        <Field label="Buffer time">
+          <DurationField
+            hours={hours}
+            minutes={minutes}
+            onChangeHours={setHours}
+            onChangeMinutes={setMinutes}
+          />
         </Field>
       </ModalPanel>
     </ModalShell>
@@ -205,27 +288,44 @@ export function ReadyTimeModal({ visible, readyTimeOffsetMinutes, onSave, onClos
 }
 
 export function RushHourPeakModal({ visible, rushHourPeakStart, rushHourPeakEnd, onSave, onClose }) {
-  const [startValue, setStartValue] = useState('');
-  const [endValue, setEndValue] = useState('');
+  const [startHours, setStartHours] = useState('');
+  const [startMinutes, setStartMinutes] = useState('');
+  const [endHours, setEndHours] = useState('');
+  const [endMinutes, setEndMinutes] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!visible) return;
-    setStartValue(rushHourPeakStart || '');
-    setEndValue(rushHourPeakEnd || '');
+    const start = parseClockTimeValue(rushHourPeakStart);
+    const end = parseClockTimeValue(rushHourPeakEnd);
+    setStartHours(start ? String(start.hours) : '');
+    setStartMinutes(start ? String(start.minutes) : '');
+    setEndHours(end ? String(end.hours) : '');
+    setEndMinutes(end ? String(end.minutes) : '');
     setError('');
   }, [visible, rushHourPeakStart, rushHourPeakEnd]);
 
   async function handleSave() {
-    const start = parseClockTimeInput(startValue);
-    const end = parseClockTimeInput(endValue);
+    const startH = Number(startHours);
+    const startM = Number(startMinutes);
+    const endH = Number(endHours);
+    const endM = Number(endMinutes);
 
-    if (!start || !end) {
-      setError('Enter valid start and end times (see format examples above).');
+    if (
+      Number.isNaN(startH) ||
+      Number.isNaN(startM) ||
+      Number.isNaN(endH) ||
+      Number.isNaN(endM) ||
+      startH > 23 ||
+      startM > 59 ||
+      endH > 23 ||
+      endM > 59
+    ) {
+      setError('Enter valid peak times (HR 0–23, MIN 0–59).');
       return;
     }
 
-    await onSave(start, end);
+    await onSave(formatClockTimeValue(startH, startM), formatClockTimeValue(endH, endM));
     onClose();
   }
 
@@ -240,11 +340,21 @@ export function RushHourPeakModal({ visible, rushHourPeakStart, rushHourPeakEnd,
           </>
         }
       >
-        <Field label="Peak start" hint={START_TIME_HINT}>
-          <FieldInput value={startValue} onChangeText={setStartValue} placeholder="Enter peak start time" />
+        <Field label="Peak start">
+          <ClockTimeField
+            hours={startHours}
+            minutes={startMinutes}
+            onChangeHours={setStartHours}
+            onChangeMinutes={setStartMinutes}
+          />
         </Field>
-        <Field label="Peak end" hint={START_TIME_HINT}>
-          <FieldInput value={endValue} onChangeText={setEndValue} placeholder="Enter peak end time" />
+        <Field label="Peak end">
+          <ClockTimeField
+            hours={endHours}
+            minutes={endMinutes}
+            onChangeHours={setEndHours}
+            onChangeMinutes={setEndMinutes}
+          />
         </Field>
         {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
       </ModalPanel>
@@ -260,14 +370,15 @@ export function AppMenu({ items }) {
       <Pressable
         className="rounded-lg border border-gray-300 px-3 py-2 active:bg-gray-100"
         onPress={() => setVisible(true)}
+        accessibilityLabel="Settings"
       >
-        <Text className="text-sm font-semibold text-gray-700">Menu</Text>
+        <Text className="text-lg text-gray-700">⚙</Text>
       </Pressable>
 
       <ModalShell visible={visible} onClose={() => setVisible(false)} animationType="fade" align="top">
         <View className="overflow-hidden rounded-xl bg-white shadow-lg">
           <Text className="border-b border-gray-200 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Menu
+            Settings
           </Text>
           {items.map((item, index) => (
             <Pressable
@@ -278,7 +389,12 @@ export function AppMenu({ items }) {
                 item.onPress();
               }}
             >
-              <Text className="text-base text-gray-900">{item.label}</Text>
+              <View className="flex-row items-center justify-between gap-3">
+                <Text className="flex-1 text-base text-gray-900">{item.label}</Text>
+                {item.value ? (
+                  <Text className="text-sm font-medium text-gray-500">{item.value}</Text>
+                ) : null}
+              </View>
             </Pressable>
           ))}
         </View>

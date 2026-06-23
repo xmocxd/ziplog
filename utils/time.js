@@ -6,6 +6,70 @@ export function formatTime24(value) {
   return `${hours}:${minutes}`;
 }
 
+export function formatShortDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+export function getEntryDurationMinutes(entry) {
+  if (!entry?.startTime || !entry?.endTime) return null;
+  const start = new Date(entry.startTime).getTime();
+  const end = new Date(entry.endTime).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 0;
+  return Math.round((end - start) / 60000);
+}
+
+export function getRunningElapsedMinutes(startTime) {
+  const start = new Date(startTime).getTime();
+  if (Number.isNaN(start)) return 0;
+  return Math.round((Date.now() - start) / 60000);
+}
+
+export function formatRunningMinutes(minutes) {
+  return `${minutes} min`;
+}
+
+export const MAX_TASK_MINUTES = 24 * 60;
+
+export function isOverMaxDuration(startTime, endTime = Date.now()) {
+  const start = new Date(startTime).getTime();
+  const end = endTime instanceof Date ? endTime.getTime() : new Date(endTime).getTime();
+  return end - start > MAX_TASK_MINUTES * 60000;
+}
+
+export function buildPastDateFromHrMin(hours, minutes) {
+  const h = Number(hours) || 0;
+  const m = Number(minutes) || 0;
+  if (h > 23 || m > 59) return null;
+  const date = new Date();
+  date.setSeconds(0, 0);
+  date.setHours(h, m, 0, 0);
+  if (date.getTime() > Date.now()) date.setDate(date.getDate() - 1);
+  return date;
+}
+
+export function buildEndDateFromHrMin(hours, minutes, startTime) {
+  const h = Number(hours) || 0;
+  const m = Number(minutes) || 0;
+  if (h > 23 || m > 59) return null;
+
+  const start = new Date(startTime);
+  const end = new Date(start);
+  end.setSeconds(0, 0);
+  end.setHours(h, m, 0, 0);
+  if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
+  if (end.getTime() > Date.now()) return null;
+  if (isOverMaxDuration(start, end)) return null;
+  return end;
+}
+
+export function dateToHrMinString(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return { hours: '', minutes: '' };
+  return { hours: String(d.getHours()), minutes: String(d.getMinutes()) };
+}
+
 export function formatDuration(minutes) {
   if (minutes % 60 === 0 && minutes >= 60) {
     const hours = minutes / 60;
@@ -20,31 +84,14 @@ export function formatDuration(minutes) {
   return `${minutes} min`;
 }
 
-export function durationToDisplay(minutes) {
-  if (minutes % 60 === 0 && minutes >= 60) return `${minutes / 60} hr`;
-  return `${minutes} min`;
+export function minutesToHrMin(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { hours, minutes };
 }
 
-export function parseClockTimeInput(value) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const colonMatch = trimmed.match(/^(\d{1,2}):(\d{1,2})$/);
-  if (colonMatch) {
-    const hours = Number.parseInt(colonMatch[1], 10);
-    const minutes = Number.parseInt(colonMatch[2], 10);
-    if (hours > 23 || minutes > 59) return null;
-    return formatClockTimeValue(hours, minutes);
-  }
-
-  const hourOnlyMatch = trimmed.match(/^(\d{1,2})$/);
-  if (hourOnlyMatch) {
-    const hours = Number.parseInt(hourOnlyMatch[1], 10);
-    if (hours > 23) return null;
-    return formatClockTimeValue(hours, 0);
-  }
-
-  return null;
+export function hrMinToMinutes(hours, minutes) {
+  return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
 }
 
 export function formatClockTimeValue(hours, minutes = 0) {
@@ -60,42 +107,11 @@ export function parseClockTimeValue(value) {
   };
 }
 
-export function parseStartTimeInput(value) {
-  const clockTime = parseClockTimeInput(value);
-  if (!clockTime) return null;
-
-  const { hours, minutes } = parseClockTimeValue(clockTime);
-  return buildStartDate(hours, minutes);
-}
-
-export function parseDurationInput(value) {
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return null;
-
-  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})$/);
-  if (colonMatch) {
-    const hours = Number.parseInt(colonMatch[1], 10);
-    const minutes = Number.parseInt(colonMatch[2], 10);
-    if (minutes > 59) return null;
-    const total = hours * 60 + minutes;
-    return total > 0 ? total : null;
-  }
-
-  const unitMatch = trimmed.match(/^([\d.]+)\s*(hrs?|mins?)$/);
-  if (unitMatch) {
-    const amount = Number.parseFloat(unitMatch[1]);
-    if (Number.isNaN(amount) || amount <= 0) return null;
-    return Math.round(unitMatch[2].startsWith('hr') ? amount * 60 : amount);
-  }
-
-  const plainNumberMatch = trimmed.match(/^([\d.]+)$/);
-  if (plainNumberMatch) {
-    const hours = Number.parseFloat(plainNumberMatch[1]);
-    if (Number.isNaN(hours) || hours <= 0) return null;
-    return Math.round(hours * 60);
-  }
-
-  return null;
+export function buildStartDateFromHrMin(hours, minutes) {
+  const h = Number(hours) || 0;
+  const m = Number(minutes) || 0;
+  if (h > 23 || m > 59) return null;
+  return buildStartDate(h, m);
 }
 
 function buildStartDate(hours, minutes) {
@@ -226,6 +242,12 @@ export function formatRushHourCurveBreakdown(rushHour) {
   return `Rush hour bell curve - start ${rushHour.startTimeFormatted} ramp-down at ${pct}% → ${effective} (${pct}% of ${max} max).`;
 }
 
+export function getTrafficColorClass(minutes) {
+  if (minutes === 0) return 'text-green-600';
+  if (minutes <= 15) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
 export function calculateAlarmTime({
   startTime,
   driveTimeMinutes,
@@ -233,6 +255,7 @@ export function calculateAlarmTime({
   peakStartTime,
   peakEndTime,
   readyTimeMinutes,
+  bufferTimeMinutes = 0,
 }) {
   const rushHour = calculateRushAllowanceFromCurve({
     startTime,
@@ -242,7 +265,8 @@ export function calculateAlarmTime({
   });
 
   const totalOffsetMs =
-    (driveTimeMinutes + readyTimeMinutes + rushHour.effectiveMinutes) * 60000;
+    (driveTimeMinutes + readyTimeMinutes + bufferTimeMinutes + rushHour.effectiveMinutes) *
+    60000;
   const alarmTime = new Date(startTime.getTime() - totalOffsetMs);
 
   return {
@@ -251,20 +275,9 @@ export function calculateAlarmTime({
       startTime,
       driveTimeMinutes,
       readyTimeMinutes,
+      bufferTimeMinutes,
       rushHourAllowanceMinutes: rushHour.effectiveMinutes,
       rushHour,
     },
   };
 }
-
-export function formatAlarmEquation(breakdown, alarmTime) {
-  const start = formatTime24(breakdown.startTime);
-  const rush = formatDuration(breakdown.rushHourAllowanceMinutes);
-  const drive = formatDuration(breakdown.driveTimeMinutes);
-  const ready = formatDuration(breakdown.readyTimeMinutes);
-  const alarm = formatTime24(alarmTime);
-  return `${start} Start − ${rush} Rush Hour − ${drive} Drive − ${ready} to Get Ready = ${alarm} Alarm`;
-}
-
-export const START_TIME_HINT = 'Start time examples: 7 (07:00), 07:00, 19:30 (24-hour time)';
-export const DURATION_HINT = 'Duration examples: 1 (1 hr), 30 min, 1 hr, 1:30 (1 hr 30 min)';

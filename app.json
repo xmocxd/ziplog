@@ -19,7 +19,12 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "ziplog",
+      "shortName": "ziplog",
+      "themeColor": "#3b82f6",
+      "backgroundColor": "#f9fafb"
     }
   }
 }
