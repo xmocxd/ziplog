@@ -12,6 +12,72 @@ export function formatShortDate(value) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+export function getLocalDayKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function formatDaySectionHeader(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+export function getEntryMinutesForTotals(entry) {
+  if (entry?.endTime) return getEntryDurationMinutes(entry) ?? 0;
+  if (entry?.isLiveTimer) return getRunningElapsedMinutes(entry.startTime);
+  return 0;
+}
+
+export function computeDayCategoryTotals(dayKey, allEntries, taskTypes) {
+  const totalsByType = new Map();
+
+  for (const entry of allEntries) {
+    if (getLocalDayKey(entry.startTime) !== dayKey) continue;
+    const minutes = getEntryMinutesForTotals(entry);
+    if (minutes <= 0) continue;
+    totalsByType.set(entry.taskTypeId, (totalsByType.get(entry.taskTypeId) || 0) + minutes);
+  }
+
+  return taskTypes
+    .map((task) => ({
+      taskTypeId: task.id,
+      name: task.name,
+      color: task.color,
+      minutes: totalsByType.get(task.id) || 0,
+    }))
+    .filter((task) => task.minutes > 0);
+}
+
+export function groupEntriesByDay(visibleEntries) {
+  const sections = [];
+  let currentDayKey = null;
+  let currentEntries = [];
+
+  for (const entry of visibleEntries) {
+    const dayKey = getLocalDayKey(entry.startTime);
+    if (dayKey !== currentDayKey) {
+      if (currentEntries.length > 0) {
+        sections.push({ dayKey: currentDayKey, entries: currentEntries });
+      }
+      currentDayKey = dayKey;
+      currentEntries = [entry];
+    } else {
+      currentEntries.push(entry);
+    }
+  }
+
+  if (currentEntries.length > 0) {
+    sections.push({ dayKey: currentDayKey, entries: currentEntries });
+  }
+
+  return sections;
+}
+
 export function getEntryDurationMinutes(entry) {
   if (!entry?.startTime || !entry?.endTime) return null;
   const start = new Date(entry.startTime).getTime();
@@ -62,6 +128,18 @@ export function buildEndDateFromHrMin(hours, minutes, startTime) {
   if (end.getTime() > Date.now()) return null;
   if (isOverMaxDuration(start, end)) return null;
   return end;
+}
+
+export function isEndTimeBeforeStart(hours, minutes, startTime) {
+  const h = Number(hours) || 0;
+  const m = Number(minutes) || 0;
+  if (h > 23 || m > 59) return false;
+
+  const start = new Date(startTime);
+  const end = new Date(start);
+  end.setSeconds(0, 0);
+  end.setHours(h, m, 0, 0);
+  return end.getTime() <= start.getTime();
 }
 
 export function dateToHrMinString(date) {

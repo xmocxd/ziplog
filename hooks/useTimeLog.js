@@ -29,6 +29,7 @@ function normalizeEntries(entries) {
     ...entry,
     createdAt: entry.createdAt ?? entry.startTime,
     adjustedMinutes: entry.adjustedMinutes ?? (entry.adjusted ? 0 : 0),
+    isLiveTimer: entry.isLiveTimer ?? false,
   }));
 }
 
@@ -43,6 +44,34 @@ export function useTimeLog() {
     entriesRef.current = entries;
   }, [entries]);
 
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await loadTimeLogData();
+      const coloredTypes = assignColorsToTaskTypes(data.taskTypes);
+      if (JSON.stringify(coloredTypes) !== JSON.stringify(data.taskTypes)) {
+        await saveTaskTypes(coloredTypes);
+      }
+      setTaskTypes(coloredTypes);
+
+      const needsMigration = data.entries.some((e) => !e.createdAt);
+      const normalized = normalizeEntries(data.entries);
+      const { entries: cleaned, removed } = stripOver24hRunning(normalized);
+      if ((removed || needsMigration) && cleaned.length > 0) {
+        await saveTimeLogEntries(cleaned);
+      }
+      if (removed) {
+        setOver24hRemoved(true);
+      }
+      entriesRef.current = cleaned;
+      setEntries(cleaned);
+    } catch (error) {
+      console.error('Failed to load time log:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const writeEntries = useCallback(async (next) => {
     try {
       const saved = await saveTimeLogEntries(next);
@@ -56,39 +85,8 @@ export function useTimeLog() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    loadTimeLogData()
-      .then(async (data) => {
-        if (!active) return;
-        const coloredTypes = assignColorsToTaskTypes(data.taskTypes);
-        if (JSON.stringify(coloredTypes) !== JSON.stringify(data.taskTypes)) {
-          await saveTaskTypes(coloredTypes);
-          if (!active) return;
-        }
-        setTaskTypes(coloredTypes);
-
-        const needsMigration = data.entries.some((e) => !e.createdAt);
-        const normalized = normalizeEntries(data.entries);
-        const { entries: cleaned, removed } = stripOver24hRunning(normalized);
-        if ((removed || needsMigration) && cleaned.length > 0) {
-          await saveTimeLogEntries(cleaned);
-          if (!active) return;
-        }
-        if (removed) {
-          setOver24hRemoved(true);
-        }
-        if (!active) return;
-        entriesRef.current = cleaned;
-        setEntries(cleaned);
-      })
-      .catch((error) => console.error('Failed to load time log:', error))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    loadData();
+  }, [loadData]);
 
   const runningEntry = useMemo(
     () => entries.find((entry) => entry.endTime == null) ?? null,
@@ -121,20 +119,24 @@ export function useTimeLog() {
   );
 
   const startTask = useCallback(
-    async (taskTypeId, startTime = new Date()) => {
+    async (taskTypeId, startTime) => {
       if (entriesRef.current.some((e) => e.endTime == null)) {
         return { ok: false, reason: 'running' };
       }
       const taskType = taskTypes.find((t) => t.id === taskTypeId);
       if (!taskType) return { ok: false, reason: 'missing' };
-      if (startTime.getTime() > Date.now()) return { ok: false, reason: 'future' };
-      if (isOverMaxDuration(startTime)) return { ok: false, reason: 'over24h' };
+
+      const isLiveTimer = startTime === undefined;
+      const start = startTime ?? new Date();
+      if (start.getTime() > Date.now()) return { ok: false, reason: 'future' };
+      if (isOverMaxDuration(start)) return { ok: false, reason: 'over24h' };
 
       await prependEntry(
         createTimeLogEntry({
           taskTypeId,
           name: taskType.name,
-          startTime,
+          startTime: start,
+          isLiveTimer,
         }),
       );
       return { ok: true };
@@ -267,5 +269,6 @@ export function useTimeLog() {
     adjustEntryDuration,
     setEntryDuration,
     deleteEntry,
+    reload: loadData,
   };
 }

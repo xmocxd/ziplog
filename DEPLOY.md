@@ -89,6 +89,27 @@ The app icon appears on the home screen. Launching it opens ziplog in **standalo
 | Offline | Limited without a service worker; you need network for the first load after install |
 | Updates | Re-deploy `dist/`, then on iPhone open the installed app — Safari may cache; force-refresh by removing and re-adding to home screen if needed |
 | Orientation | Portrait (per `manifest.json`) |
+| Backup | Use **App Settings** (gear icon) → **Back up now** → **Save to Files** (or iCloud Drive) |
+| Restore | **App Settings** → **Restore from backup** → pick your saved JSON file |
+
+### Backing up data on iPhone (recommended)
+
+ziplog stores everything locally in Safari. If you clear website data or reinstall the PWA, that data is lost unless you have a backup file saved outside the browser.
+
+1. Open the home-screen app (or Safari)
+2. Tap the **gear** icon on the Time Log or Trip Planner screen
+3. Tap **Back up now**
+4. In the share sheet, tap **Save to Files** (choose iCloud Drive or On My iPhone)
+5. Keep the `ziplog-backup-YYYY-MM-DD.json` file somewhere safe
+
+### Restoring from a backup on iPhone
+
+1. Open ziplog at the same HTTPS URL you use normally (same origin matters)
+2. Tap the **gear** icon → **Restore from backup**
+3. Select your saved JSON backup file
+4. Confirm **Restore** — this replaces all locations, trip settings, and time log entries on this device
+
+After restore, your lists and settings should match the backup. If the app looks empty, confirm you are on the **same URL** as when you created the backup (e.g. `https://ziplog.netlify.app` vs a different host).
 
 ## 6. Updating the installed PWA
 

@@ -62,6 +62,22 @@ export function useAppData() {
     setRushHourPeakEnd(saved.rushHourPeakEnd);
   }, []);
 
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await loadAppData();
+      setLocations(data.locations);
+      setReadyTimeOffsetMinutes(data.readyTimeOffsetMinutes);
+      setBufferTimeMinutes(data.bufferTimeMinutes);
+      setRushHourPeakStart(data.rushHourPeakStart);
+      setRushHourPeakEnd(data.rushHourPeakEnd);
+    } catch (error) {
+      console.error('Failed to reload app data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     locations,
     loading,
@@ -74,5 +90,6 @@ export function useAppData() {
     updateReadyTimeOffset,
     updateBufferTime,
     updateRushHourPeakTimes,
+    reload,
   };
 }

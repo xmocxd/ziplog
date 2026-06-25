@@ -60,6 +60,7 @@ export function createTimeLogEntry({
   startTime,
   endTime = null,
   isManualBlock = false,
+  isLiveTimer = false,
 }) {
   const now = new Date().toISOString();
   return {
@@ -71,6 +72,7 @@ export function createTimeLogEntry({
     createdAt: now,
     adjustedMinutes: 0,
     isManualBlock,
+    isLiveTimer,
   };
 }
 

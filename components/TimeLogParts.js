@@ -10,11 +10,12 @@ export function TaskSplitButton({
   isRunning,
   isBlocked,
   runningStartTime,
+  showLiveElapsed,
   onStartStop,
   onSetTime,
 }) {
   const leftDisabled = isBlocked && !isRunning;
-  const runningMinutes = useRunningElapsedMinutes(runningStartTime, isRunning);
+  const runningMinutes = useRunningElapsedMinutes(runningStartTime, isRunning && showLiveElapsed);
   const bgStyle = isRunning
     ? { backgroundColor: hexWithAlpha(taskColor, 0.18) }
     : leftDisabled
@@ -38,7 +39,11 @@ export function TaskSplitButton({
         <Text
           className={`mt-1 text-sm ${leftDisabled ? 'text-gray-400' : 'text-gray-600'}`}
         >
-          {isRunning ? `Stop · ${formatRunningMinutes(runningMinutes)}` : 'Start now'}
+          {isRunning
+            ? showLiveElapsed
+              ? `Stop · ${formatRunningMinutes(runningMinutes)}`
+              : 'Stop'
+            : 'Start now'}
         </Text>
       </Pressable>
       <Pressable

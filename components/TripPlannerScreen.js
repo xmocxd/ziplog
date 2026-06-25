@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import { formatDuration } from '../utils/time';
 import { AppShell } from './Layout';
 import LocationList from './LocationList';
+import { SettingsGearButton } from './AppSettingsModal';
 import {
-  AppMenu,
-  BufferTimeModal,
   LocationAlarmModal,
   LocationFormModal,
-  ReadyTimeModal,
-  RushHourPeakModal,
 } from './Modals';
 
 const GET_READY_PRESETS = [
@@ -61,33 +57,10 @@ export default function TripPlannerScreen({
   onUpdateReadyTime,
   onUpdateBufferTime,
   onUpdateRushHourPeakTimes,
+  onOpenSettings,
 }) {
   const [editingLocation, setEditingLocation] = useState(undefined);
   const [alarmLocation, setAlarmLocation] = useState(null);
-  const [readyTimeOpen, setReadyTimeOpen] = useState(false);
-  const [bufferTimeOpen, setBufferTimeOpen] = useState(false);
-  const [rushHourPeakOpen, setRushHourPeakOpen] = useState(false);
-
-  const menuItems = [
-    {
-      id: 'edit-ready-time',
-      label: 'Get-Ready Time',
-      value: formatDuration(readyTimeOffsetMinutes ?? 30),
-      onPress: () => setReadyTimeOpen(true),
-    },
-    {
-      id: 'edit-buffer-time',
-      label: 'Buffer Time',
-      value: formatDuration(bufferTimeMinutes ?? 10),
-      onPress: () => setBufferTimeOpen(true),
-    },
-    {
-      id: 'edit-rush-hour-peak',
-      label: 'Rush Hour Peak',
-      value: `${rushHourPeakStart}–${rushHourPeakEnd}`,
-      onPress: () => setRushHourPeakOpen(true),
-    },
-  ];
 
   return (
     <AppShell className="flex-1">
@@ -95,7 +68,7 @@ export default function TripPlannerScreen({
         <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-2">
           <View className="flex-row items-center justify-between">
             <Text className="text-2xl font-bold text-gray-900">Trip Planner</Text>
-            <AppMenu items={menuItems} />
+            {onOpenSettings ? <SettingsGearButton onPress={onOpenSettings} /> : null}
           </View>
           <Pressable
             className="mt-4 items-center rounded-xl bg-blue-500 py-3 active:bg-blue-600"
@@ -138,28 +111,6 @@ export default function TripPlannerScreen({
         rushHourPeakStart={rushHourPeakStart}
         rushHourPeakEnd={rushHourPeakEnd}
         onClose={() => setAlarmLocation(null)}
-      />
-
-      <ReadyTimeModal
-        visible={readyTimeOpen}
-        readyTimeOffsetMinutes={readyTimeOffsetMinutes}
-        onSave={onUpdateReadyTime}
-        onClose={() => setReadyTimeOpen(false)}
-      />
-
-      <BufferTimeModal
-        visible={bufferTimeOpen}
-        bufferTimeMinutes={bufferTimeMinutes}
-        onSave={onUpdateBufferTime}
-        onClose={() => setBufferTimeOpen(false)}
-      />
-
-      <RushHourPeakModal
-        visible={rushHourPeakOpen}
-        rushHourPeakStart={rushHourPeakStart}
-        rushHourPeakEnd={rushHourPeakEnd}
-        onSave={onUpdateRushHourPeakTimes}
-        onClose={() => setRushHourPeakOpen(false)}
       />
     </AppShell>
   );

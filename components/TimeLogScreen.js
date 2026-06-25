@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
+  computeDayCategoryTotals,
+  formatDaySectionHeader,
   formatDuration,
   formatRunningMinutes,
   formatShortDate,
   formatTime24,
   getEntryDurationMinutes,
+  groupEntriesByDay,
 } from '../utils/time';
 import { useRunningElapsedMinutes } from '../hooks/useRunningMinuteTick';
+import { SettingsGearButton } from './AppSettingsModal';
 import { AppShell } from './Layout';
 import { ClockTimeModal, EntryEditModal, ManualBlockModal } from './TimeLogModals';
 import { TaskSplitButton } from './TimeLogParts';
@@ -28,9 +32,27 @@ function formatEntryDateLine(entry) {
   return start ? `${date} · ${start}` : date;
 }
 
+function TimeLogDayHeader({ headerDate, totals, showTopBorder }) {
+  return (
+    <View className={showTopBorder ? 'border-t border-gray-300 pt-3' : 'pt-1'}>
+      <Text className="text-sm font-bold text-gray-900">{formatDaySectionHeader(headerDate)}</Text>
+      {totals.length > 0 ? (
+        <View className="mt-1.5 flex-row flex-wrap gap-x-3 gap-y-1">
+          {totals.map((task) => (
+            <Text key={task.taskTypeId} className="text-xs font-semibold" style={{ color: task.color }}>
+              {task.name} {formatDuration(task.minutes)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function TimeLogRow({ entry, taskColor, onPress }) {
   const isRunning = entry.endTime == null;
-  const runningMinutes = useRunningElapsedMinutes(entry.startTime, isRunning);
+  const showLiveElapsed = isRunning && entry.isLiveTimer;
+  const runningMinutes = useRunningElapsedMinutes(entry.startTime, showLiveElapsed);
   const duration = getEntryDurationMinutes(entry);
   const adjustment = entry.adjustedMinutes || 0;
   const hasAdjustment = adjustment !== 0;
@@ -57,9 +79,13 @@ function TimeLogRow({ entry, taskColor, onPress }) {
           {entry.name}
         </Text>
         {isRunning ? (
-          <Text className="text-sm font-medium text-green-700">
-            {formatRunningMinutes(runningMinutes)}
-          </Text>
+          showLiveElapsed ? (
+            <Text className="text-sm font-medium text-green-700">
+              {formatRunningMinutes(runningMinutes)}
+            </Text>
+          ) : (
+            <Text className="text-sm font-medium text-green-700">Running</Text>
+          )
         ) : (
           <Text className="text-sm font-medium text-gray-700">{formatDuration(duration)}</Text>
         )}
@@ -82,6 +108,7 @@ function TimeLogRow({ entry, taskColor, onPress }) {
 export default function TimeLogScreen({
   addBlockOpen,
   onAddBlockClose,
+  onOpenSettings,
   taskTypes,
   entries,
   visibleEntries,
@@ -104,6 +131,12 @@ export default function TimeLogScreen({
   const editingEntry = entries.find((e) => e.id === editingEntryId) ?? null;
 
   const taskColorById = Object.fromEntries(taskTypes.map((t) => [t.id, t.color]));
+  const daySections = groupEntriesByDay(visibleEntries);
+  const liveTick = useRunningElapsedMinutes(
+    runningEntry?.isLiveTimer ? runningEntry.startTime : null,
+    Boolean(runningEntry?.isLiveTimer),
+  );
+  void liveTick;
 
   useEffect(() => {
     if (!over24hRemoved) return;
@@ -191,7 +224,10 @@ export default function TimeLogScreen({
   return (
     <AppShell className="flex-1">
       <View className="flex-1 px-4 pt-2">
-        <Text className="text-2xl font-bold text-gray-900">Time Log</Text>
+        <View className="flex-row items-center justify-between">
+          <Text className="text-2xl font-bold text-gray-900">Time Log</Text>
+          {onOpenSettings ? <SettingsGearButton onPress={onOpenSettings} /> : null}
+        </View>
 
         <View className="mt-3 min-h-0 flex-1">
           {loading ? (
@@ -205,14 +241,29 @@ export default function TimeLogScreen({
           ) : (
             <ScrollView className="flex-1">
               <View className="gap-2 pb-2">
-                {visibleEntries.map((entry) => (
-                  <TimeLogRow
-                    key={entry.id}
-                    entry={entry}
-                    taskColor={taskColorById[entry.taskTypeId] ?? '#2563eb'}
-                    onPress={() => setEditingEntryId(entry.id)}
-                  />
-                ))}
+                {daySections.map((section, sectionIndex) => {
+                  const headerDate = section.entries[0]?.startTime;
+                  const totals = computeDayCategoryTotals(section.dayKey, entries, taskTypes);
+                  return (
+                    <View key={section.dayKey} className={sectionIndex > 0 ? 'mt-1' : ''}>
+                      <TimeLogDayHeader
+                        headerDate={headerDate}
+                        totals={totals}
+                        showTopBorder={sectionIndex > 0}
+                      />
+                      <View className="mt-2 gap-2">
+                        {section.entries.map((entry) => (
+                          <TimeLogRow
+                            key={entry.id}
+                            entry={entry}
+                            taskColor={taskColorById[entry.taskTypeId] ?? '#2563eb'}
+                            onPress={() => setEditingEntryId(entry.id)}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
                 {hasMoreEntries ? (
                   <Pressable className="items-center py-3 active:opacity-70">
                     <Text className="text-sm font-semibold text-blue-600">More...</Text>
@@ -235,6 +286,7 @@ export default function TimeLogScreen({
                 isRunning={isRunning}
                 isBlocked={isBlocked}
                 runningStartTime={isRunning ? runningEntry.startTime : null}
+                showLiveElapsed={isRunning && runningEntry.isLiveTimer}
                 onStartStop={() => handleStartStop(taskType)}
                 onSetTime={() =>
                   setClockModal({

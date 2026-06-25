@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { confirmAction } from '../utils/confirm';
 import {
@@ -7,6 +7,7 @@ import {
   buildPastDateFromHrMin,
   getEntryDurationMinutes,
   hrMinToMinutes,
+  isEndTimeBeforeStart,
   minutesToHrMin,
 } from '../utils/time';
 import { hexWithAlpha } from '../utils/taskColors';
@@ -31,8 +32,15 @@ export function ClockTimeModal({ visible, mode, taskName, startTime, onSave, onC
       if (!start) return;
       onSave(start);
     } else {
+      if (isEndTimeBeforeStart(hours, minutes, startTime)) {
+        Alert.alert('Invalid time', 'End time must be after the start time.');
+        return;
+      }
       const end = buildEndDateFromHrMin(hours, minutes, startTime);
-      if (!end) return;
+      if (!end) {
+        Alert.alert('Invalid time', 'End time must be after the start time and not in the future.');
+        return;
+      }
       onSave(end);
     }
     onClose();
