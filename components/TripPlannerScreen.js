@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
+import { theme } from '../constants/theme';
 import { AppShell } from './Layout';
 import LocationList from './LocationList';
 import { SettingsGearButton } from './SettingsMenu';
@@ -18,8 +19,8 @@ function GetReadyQuickPicker({ readyTimeOffsetMinutes, onSelect }) {
   const current = readyTimeOffsetMinutes ?? 30;
 
   return (
-    <View className="border-t border-gray-200 bg-white px-4 py-3">
-      <Text className="mb-2 text-center text-xs font-medium uppercase tracking-wide text-gray-500">
+    <View className="border-t border-app-border bg-app-surface px-4 py-3">
+      <Text className="mb-2 text-center text-xs font-medium uppercase tracking-wide text-app-dim">
         Get ready
       </Text>
       <View className="flex-row gap-2">
@@ -29,12 +30,14 @@ function GetReadyQuickPicker({ readyTimeOffsetMinutes, onSelect }) {
             <Pressable
               key={preset.minutes}
               className={`flex-1 items-center rounded-xl border py-3 ${
-                selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white active:bg-gray-50'
+                selected
+                  ? 'border-app-accent bg-app-accent/15'
+                  : 'border-app-border bg-app-card active:bg-app-surface'
               }`}
               onPress={() => onSelect(preset.minutes)}
             >
               <Text
-                className={`text-base font-semibold ${selected ? 'text-blue-700' : 'text-gray-800'}`}
+                className={`text-base font-semibold ${selected ? 'text-app-accent' : 'text-app-text'}`}
               >
                 {preset.label}
               </Text>
@@ -63,13 +66,13 @@ export default function TripPlannerScreen({
   return (
     <AppShell className="flex-1">
       <View className="flex-1">
-        <View className="border-b border-gray-200 bg-white px-4 pb-4 pt-2">
+        <View className="border-b border-app-border bg-app-surface px-4 pb-4 pt-2">
           <View className="flex-row items-center justify-between">
-            <Text className="text-2xl font-bold text-gray-900">Trip Planner</Text>
+            <Text className="text-2xl font-bold tracking-tight text-app-text">Trip Planner</Text>
             {onOpenSettings ? <SettingsGearButton onPress={onOpenSettings} /> : null}
           </View>
           <Pressable
-            className="mt-4 items-center rounded-xl bg-blue-500 py-3 active:bg-blue-600"
+            className="mt-4 items-center rounded-xl bg-app-accent py-3.5 active:bg-app-accent-pressed"
             onPress={() => setEditingLocation(null)}
           >
             <Text className="text-base font-semibold text-white">Add Location</Text>
@@ -78,7 +81,7 @@ export default function TripPlannerScreen({
 
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#3b82f6" />
+            <ActivityIndicator size="large" color={theme.accent} />
           </View>
         ) : (
           <LocationList

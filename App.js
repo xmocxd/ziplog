@@ -4,6 +4,7 @@ import { ActivityIndicator, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { theme } from './constants/theme';
 import AppSettingsModal from './components/AppSettingsModal';
 import BottomNav from './components/BottomNav';
 import {
@@ -39,9 +40,9 @@ export default function App() {
 
   if (!storageReady) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-gray-50" edges={['top', 'left', 'right']}>
-        <StatusBar style="auto" />
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-bg" edges={['top', 'left', 'right']}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color={theme.accent} />
       </SafeAreaView>
     );
   }
@@ -89,8 +90,8 @@ function AppContent() {
   }
 
   return (
-    <SafeAreaView className="flex-1 items-center bg-gray-50" edges={['top', 'left', 'right']}>
-      <StatusBar style="auto" />
+    <SafeAreaView className="flex-1 items-center bg-app-bg" edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
 
       <View className="w-full flex-1" style={{ maxWidth: 900 }}>
         <View className="flex-1" style={{ display: activeTab === 'timelog' ? 'flex' : 'none' }}>

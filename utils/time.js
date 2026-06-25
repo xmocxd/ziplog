@@ -309,9 +309,9 @@ export function formatRushHourCurveBreakdown(rushHour) {
 }
 
 export function getTrafficColorClass(minutes) {
-  if (minutes === 0) return 'text-green-600';
-  if (minutes <= 15) return 'text-yellow-600';
-  return 'text-red-600';
+  if (minutes === 0) return 'text-app-running';
+  if (minutes <= 15) return 'text-amber-400';
+  return 'text-app-danger';
 }
 
 export function calculateAlarmTime({

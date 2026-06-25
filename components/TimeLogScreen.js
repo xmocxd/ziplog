@@ -11,6 +11,7 @@ import {
   getEntryDurationMinutes,
   groupEntriesByDay,
 } from '../utils/time';
+import { theme } from '../constants/theme';
 import { showAlert } from '../utils/dialogs';
 import { showTimeLogMessage } from '../utils/timeLogMessages';
 import { useRunningElapsedMinutes } from '../hooks/useRunningMinuteTick';
@@ -19,8 +20,8 @@ import { AppShell } from './Layout';
 import { ClockTimeModal, EntryEditModal, ManualBlockModal } from './TimeLogModals';
 import { TaskSplitButton } from './TimeLogParts';
 
-const OLIVE = '#6b7c3f';
-const ORANGE = '#ea580c';
+const OLIVE = theme.olive;
+const ORANGE = theme.orange;
 
 function formatAdjustment(minutes) {
   const sign = minutes > 0 ? '+' : '−';
@@ -36,8 +37,8 @@ function formatEntryDateLine(entry) {
 
 function TimeLogDayHeader({ headerDate, totals, showTopBorder }) {
   return (
-    <View className={showTopBorder ? 'border-t border-gray-300 pt-3' : 'pt-1'}>
-      <Text className="text-sm font-bold text-gray-900">{formatDaySectionHeader(headerDate)}</Text>
+    <View className={showTopBorder ? 'border-t border-app-border pt-3' : 'pt-1'}>
+      <Text className="text-sm font-bold tracking-tight text-app-text">{formatDaySectionHeader(headerDate)}</Text>
       {totals.length > 0 ? (
         <View className="mt-1.5 flex-row flex-wrap gap-x-3 gap-y-1">
           {totals.map((task) => (
@@ -59,20 +60,25 @@ function TimeLogRow({ entry, taskColor, onPress }) {
   const adjustment = entry.adjustedMinutes || 0;
   const hasAdjustment = adjustment !== 0;
 
-  let borderClass = 'border-gray-200 bg-white';
+  let borderClass = 'border-app-border bg-app-card';
   let rowStyle;
-  if (isRunning) borderClass = 'border-green-300 bg-green-50';
-  else if (hasAdjustment) {
+  if (isRunning) {
+    borderClass = 'border';
+    rowStyle = {
+      borderColor: theme.runningBorder,
+      backgroundColor: theme.runningBg,
+    };
+  } else if (hasAdjustment) {
     borderClass = 'border';
     rowStyle =
       adjustment > 0
-        ? { borderColor: '#a3ad7a', backgroundColor: '#f4f5ef' }
-        : { borderColor: '#fdba74', backgroundColor: '#fff7ed' };
+        ? { borderColor: theme.adjustUpBorder, backgroundColor: theme.adjustUpBg }
+        : { borderColor: theme.adjustDownBorder, backgroundColor: theme.adjustDownBg };
   }
 
   return (
     <Pressable
-      className={`rounded-xl border px-4 py-3 ${borderClass}`}
+      className={`rounded-2xl border px-4 py-3 ${borderClass}`}
       style={rowStyle}
       onPress={onPress}
     >
@@ -82,18 +88,18 @@ function TimeLogRow({ entry, taskColor, onPress }) {
         </Text>
         {isRunning ? (
           showLiveElapsed ? (
-            <Text className="text-sm font-medium text-green-700">
+            <Text className="text-sm font-medium text-app-running">
               {formatRunningMinutes(runningMinutes)}
             </Text>
           ) : (
-            <Text className="text-sm font-medium text-green-700">Running</Text>
+            <Text className="text-sm font-medium text-app-running">Running</Text>
           )
         ) : (
-          <Text className="text-sm font-medium text-gray-700">{formatDuration(duration)}</Text>
+          <Text className="text-sm font-medium text-app-muted">{formatDuration(duration)}</Text>
         )}
       </View>
       <View className="mt-1 flex-row flex-wrap items-center gap-2">
-        <Text className="text-sm text-gray-500">{formatEntryDateLine(entry)}</Text>
+        <Text className="text-sm text-app-muted">{formatEntryDateLine(entry)}</Text>
         {hasAdjustment ? (
           <Text
             className="text-sm font-medium"
@@ -216,18 +222,18 @@ export default function TimeLogScreen({
     <AppShell className="flex-1">
       <View className="flex-1 px-4 pt-2">
         <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-gray-900">Time Log</Text>
+          <Text className="text-2xl font-bold tracking-tight text-app-text">Time Log</Text>
           {onOpenSettings ? <SettingsGearButton onPress={onOpenSettings} /> : null}
         </View>
 
         <View className="mt-3 min-h-0 flex-1">
           {loading ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" color="#3b82f6" />
+              <ActivityIndicator size="large" color={theme.accent} />
             </View>
           ) : visibleEntries.length === 0 ? (
             <View className="flex-1 items-center justify-center">
-              <Text className="text-base text-gray-500">No logged tasks yet.</Text>
+              <Text className="text-base text-app-muted">No logged tasks yet.</Text>
             </View>
           ) : (
             <ScrollView className="flex-1">
@@ -260,7 +266,7 @@ export default function TimeLogScreen({
                     className="items-center py-3 active:opacity-70"
                     onPress={loadMoreEntries}
                   >
-                    <Text className="text-sm font-semibold text-blue-600">More...</Text>
+                    <Text className="text-sm font-semibold text-app-accent">More...</Text>
                   </Pressable>
                 ) : null}
               </View>

@@ -1,5 +1,7 @@
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
+import { theme } from '../constants/theme';
+
 const APP_MAX_WIDTH = 900;
 
 export function AppShell({ children, className = '' }) {
@@ -22,7 +24,7 @@ export function ModalShell({
   return (
     <Modal visible={visible} animationType={animationType} transparent onRequestClose={onClose}>
       <View className={`flex-1 ${alignmentClass}`}>
-        <Pressable className="absolute inset-0 bg-black/40" onPress={onClose} />
+        <Pressable className="absolute inset-0 bg-black/70" onPress={onClose} />
         <View className="w-full items-center px-4">
           <View className="w-full" style={{ maxWidth: APP_MAX_WIDTH }}>
             {children}
@@ -35,14 +37,14 @@ export function ModalShell({
 
 export function ModalPanel({ title, headerRight, children, actions }) {
   return (
-    <View className="rounded-t-3xl bg-white px-6 pb-8 pt-6">
+    <View className="rounded-t-3xl border-t border-app-border bg-app-card px-6 pb-8 pt-6">
       {headerRight ? (
         <View className="flex-row items-center justify-between">
-          <Text className="text-xl font-bold text-gray-900">{title}</Text>
+          <Text className="text-xl font-bold text-app-text">{title}</Text>
           {headerRight}
         </View>
       ) : (
-        <Text className="text-xl font-bold text-gray-900">{title}</Text>
+        <Text className="text-xl font-bold text-app-text">{title}</Text>
       )}
       {children}
       <View className="mt-6 flex-row gap-3">{actions}</View>
@@ -54,17 +56,19 @@ export function ModalButton({ label, onPress, variant = 'secondary', disabled = 
   const isPrimary = variant === 'primary';
   return (
     <Pressable
-      className={`flex-1 items-center rounded-xl py-3 ${
+      className={`flex-1 items-center rounded-xl py-3.5 ${
         isPrimary
           ? disabled
-            ? 'bg-blue-300'
-            : 'bg-blue-500 active:bg-blue-600'
-          : 'border border-gray-300 active:bg-gray-50'
+            ? 'bg-app-accent/40'
+            : 'bg-app-accent active:bg-app-accent-pressed'
+          : 'border border-app-border bg-app-surface active:opacity-80'
       }`}
       onPress={onPress}
       disabled={disabled}
     >
-      <Text className={`text-base font-semibold ${isPrimary ? 'text-white' : 'text-gray-700'}`}>
+      <Text
+        className={`text-base font-semibold ${isPrimary ? 'text-white' : 'text-app-text'}`}
+      >
         {label}
       </Text>
     </Pressable>
@@ -74,8 +78,8 @@ export function ModalButton({ label, onPress, variant = 'secondary', disabled = 
 export function Field({ label, hint, children }) {
   return (
     <>
-      <Text className="mt-6 text-sm font-medium text-gray-700">{label}</Text>
-      {hint ? <Text className="mt-1 text-xs leading-4 text-gray-500">{hint}</Text> : null}
+      <Text className="mt-6 text-sm font-medium text-app-muted">{label}</Text>
+      {hint ? <Text className="mt-1 text-xs leading-4 text-app-dim">{hint}</Text> : null}
       {children}
     </>
   );
@@ -84,7 +88,8 @@ export function Field({ label, hint, children }) {
 export function FieldInput(props) {
   return (
     <TextInput
-      className="mt-2 rounded-xl border border-gray-300 px-4 py-3 text-base text-gray-900"
+      className="mt-2 rounded-xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
+      placeholderTextColor={theme.placeholder}
       autoCapitalize="none"
       {...props}
     />
@@ -104,15 +109,15 @@ function IntegerInput({ value, onChangeText, max, placeholder, inputRef, compact
       ref={inputRef}
       className={
         compact
-          ? 'w-16 rounded-xl border border-gray-300 px-2 py-3 text-center text-base text-gray-900'
-          : 'flex-1 rounded-xl border border-gray-300 px-4 py-3 text-center text-base text-gray-900'
+          ? 'w-16 rounded-xl border border-app-border bg-app-surface px-2 py-3 text-center text-base text-app-text'
+          : 'flex-1 rounded-xl border border-app-border bg-app-surface px-4 py-3 text-center text-base text-app-text'
       }
       value={value}
       onChangeText={(text) => onChangeText(filterIntegerInput(text, max))}
       keyboardType="number-pad"
       maxLength={max != null ? String(max).length : undefined}
       placeholder={placeholder}
-      placeholderTextColor="#9ca3af"
+      placeholderTextColor={theme.placeholder}
     />
   );
 }
@@ -134,7 +139,7 @@ export function DurationField({
         inputRef={hoursRef}
         compact
       />
-      <Text className="text-base text-gray-600">hrs</Text>
+      <Text className="text-base text-app-muted">hrs</Text>
       <IntegerInput
         value={minutes}
         onChangeText={onChangeMinutes}
@@ -142,7 +147,7 @@ export function DurationField({
         placeholder="0"
         compact
       />
-      <Text className="text-base text-gray-600">mins</Text>
+      <Text className="text-base text-app-muted">mins</Text>
     </View>
   );
 }
@@ -158,7 +163,7 @@ export function ClockTimeField({ hours, minutes, onChangeHours, onChangeMinutes,
         inputRef={hoursRef}
         compact
       />
-      <Text className="text-xl font-medium text-gray-500">:</Text>
+      <Text className="text-xl font-medium text-app-dim">:</Text>
       <IntegerInput
         value={minutes}
         onChangeText={onChangeMinutes}

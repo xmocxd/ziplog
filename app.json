@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -23,8 +23,8 @@
       "favicon": "./assets/favicon.png",
       "name": "ziplog",
       "shortName": "ziplog",
-      "themeColor": "#3b82f6",
-      "backgroundColor": "#f9fafb"
+      "themeColor": "#0a0c10",
+      "backgroundColor": "#0a0c10"
     }
   }
 }

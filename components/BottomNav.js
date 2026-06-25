@@ -8,7 +8,7 @@ const SIDE_TABS = [
 
 export default function BottomNav({ activeTab, onTabPress, onAddBlock, showAddBlock }) {
   return (
-    <View className="border-t border-gray-200 bg-white px-2 pb-2 pt-2">
+    <View className="border-t border-app-border bg-app-surface px-2 pb-2 pt-2">
       <View className="flex-row items-center">
         {SIDE_TABS.slice(0, 1).map((tab) => (
           <NavItem
@@ -21,11 +21,11 @@ export default function BottomNav({ activeTab, onTabPress, onAddBlock, showAddBl
 
         {showAddBlock ? (
           <Pressable
-            className="mx-1 flex-1 items-center rounded-xl border border-blue-200 bg-blue-50 py-2 active:bg-blue-100"
+            className="mx-1 flex-1 items-center rounded-xl border border-app-accent/40 bg-app-accent/15 py-2 active:bg-app-accent/25"
             onPress={onAddBlock}
           >
-            <Text className="text-2xl font-light text-blue-600">+</Text>
-            <Text className="text-xs font-semibold text-blue-600">Add block</Text>
+            <Text className="text-2xl font-light text-app-accent">+</Text>
+            <Text className="text-xs font-semibold text-app-accent">Add block</Text>
           </Pressable>
         ) : (
           <View className="flex-1" />
@@ -48,8 +48,8 @@ function NavItem({ tab, isActive, onPress }) {
   const isDisabled = tab.disabled;
   return (
     <Pressable
-      className={`flex-1 items-center rounded-lg py-2 ${
-        isDisabled ? 'opacity-40' : isActive ? 'bg-blue-50' : 'active:bg-gray-50'
+      className={`flex-1 items-center rounded-xl py-2 ${
+        isDisabled ? 'opacity-35' : isActive ? 'bg-app-accent/15' : 'active:bg-app-card'
       }`}
       onPress={() => {
         if (!isDisabled) onPress();
@@ -57,7 +57,7 @@ function NavItem({ tab, isActive, onPress }) {
       disabled={isDisabled}
     >
       <Text className="text-xl">{tab.icon}</Text>
-      <Text className={`mt-1 text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+      <Text className={`mt-1 text-xs font-medium ${isActive ? 'text-app-accent' : 'text-app-muted'}`}>
         {tab.label}
       </Text>
     </Pressable>

@@ -83,7 +83,7 @@ function AlarmEquationDisplay({ breakdown, alarmTime }) {
   const rushColor = getTrafficColorClass(rushMinutes);
 
   return (
-    <Text className="mt-3 text-sm leading-6 text-gray-500">
+    <Text className="mt-3 text-sm leading-6 text-app-muted">
       {formatTime24(breakdown.startTime)} Start −{' '}
       <Text className={`font-semibold ${rushColor}`}>
         {formatDuration(rushMinutes)} Rush Hour
@@ -182,16 +182,16 @@ export function LocationAlarmModal({
               onChangeMinutes={setDriveMinutes}
             />
           </Field>
-          {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
+          {error ? <Text className="mt-3 text-sm text-app-danger">{error}</Text> : null}
         </ModalPanel>
       ) : (
-        <View className="rounded-t-3xl bg-white px-6 pb-8 pt-6">
-          <Text className="text-xl font-bold text-gray-900">{location.name}</Text>
-          <Text className="mt-6 text-lg font-bold text-gray-900">
+        <View className="rounded-t-3xl border-t border-app-border bg-app-card px-6 pb-8 pt-6">
+          <Text className="text-xl font-bold text-app-text">{location.name}</Text>
+          <Text className="mt-6 text-lg font-bold text-app-text">
             SET ALARM FOR: {formatTime24(result.alarmTime)}
           </Text>
           <AlarmEquationDisplay breakdown={result.breakdown} alarmTime={result.alarmTime} />
-          <Text className="mt-2 text-xs leading-5 text-gray-400">
+          <Text className="mt-2 text-xs leading-5 text-app-dim">
             {formatRushHourCurveBreakdown(result.breakdown.rushHour)}
           </Text>
           <View className="mt-6 flex-row">
@@ -363,7 +363,7 @@ export function RushHourPeakModal({ visible, rushHourPeakStart, rushHourPeakEnd,
             onChangeMinutes={setEndMinutes}
           />
         </Field>
-        {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
+        {error ? <Text className="mt-3 text-sm text-app-danger">{error}</Text> : null}
       </ModalPanel>
     </ModalShell>
   );

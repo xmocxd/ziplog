@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
+import { theme } from '../constants/theme';
 import { confirmAction, showAlert } from '../utils/dialogs';
 import {
   buildEndDateFromHrMin,
@@ -114,15 +115,15 @@ export function ManualBlockModal({ visible, taskTypes, onSave, onClose }) {
                 key={task.id}
                 className="flex-1 items-center rounded-xl border py-3 active:opacity-80"
                 style={{
-                  borderColor: taskTypeId === task.id ? task.color : '#d1d5db',
+                  borderColor: taskTypeId === task.id ? task.color : theme.unselectedBorder,
                   backgroundColor:
-                    taskTypeId === task.id ? hexWithAlpha(task.color, 0.12) : '#ffffff',
+                    taskTypeId === task.id ? hexWithAlpha(task.color, 0.2) : theme.unselectedBg,
                 }}
                 onPress={() => setTaskTypeId(task.id)}
               >
                 <Text
                   className="text-sm font-semibold"
-                  style={{ color: taskTypeId === task.id ? task.color : '#374151' }}
+                  style={{ color: taskTypeId === task.id ? task.color : theme.unselectedText }}
                 >
                   {task.name}
                 </Text>
@@ -226,28 +227,29 @@ export function EntryEditModal({
         title="Edit entry"
         headerRight={
           <Pressable
-            className="rounded-lg px-2 py-1 active:bg-red-50"
+            className="rounded-lg px-2 py-1 active:bg-app-danger/15"
             onPress={handleDelete}
             accessibilityLabel="Delete entry"
           >
-            <Text className="text-sm font-semibold text-red-600">Delete</Text>
+            <Text className="text-sm font-semibold text-app-danger">Delete</Text>
           </Pressable>
         }
         actions={<ModalButton label="Done" variant="primary" onPress={handleSave} />}
       >
         <Field label="Name">
           <TextInput
-            className="mt-2 rounded-xl border border-gray-300 px-4 py-3 text-base text-gray-900"
+            className="mt-2 rounded-xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
             value={name}
             onChangeText={setName}
             placeholder="Task name"
+            placeholderTextColor={theme.placeholder}
             autoCapitalize="words"
           />
         </Field>
 
         {!isRunning ? (
           <View className="mt-6">
-            <Text className="text-sm font-medium text-gray-700">Adjust duration</Text>
+            <Text className="text-sm font-medium text-app-muted">Adjust duration</Text>
             <View className="mt-3 flex-row flex-wrap items-center gap-2">
               {ADJUSTMENTS.map((item) => {
                 const disabled = isSubtractDisabled(item.delta);
@@ -255,13 +257,15 @@ export function EntryEditModal({
                   <Pressable
                     key={item.label}
                     className={`rounded-lg border px-3 py-2 ${
-                      disabled ? 'border-gray-200 bg-gray-50' : 'border-gray-300 active:bg-gray-50'
+                      disabled
+                        ? 'border-app-border/50 bg-app-surface/50'
+                        : 'border-app-border bg-app-card active:bg-app-surface'
                     }`}
                     onPress={() => !disabled && onAdjust(item.delta)}
                     disabled={disabled}
                   >
                     <Text
-                      className={`text-sm font-medium ${disabled ? 'text-gray-300' : 'text-gray-700'}`}
+                      className={`text-sm font-medium ${disabled ? 'text-app-dim' : 'text-app-text'}`}
                     >
                       {item.label}
                     </Text>
@@ -271,13 +275,13 @@ export function EntryEditModal({
               <Pressable
                 className={`rounded-lg border px-3 py-2 ${
                   editingDuration
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-gray-300 active:bg-gray-50'
+                    ? 'border-app-accent bg-app-accent/15'
+                    : 'border-app-border bg-app-card active:bg-app-surface'
                 }`}
                 onPress={handleToggleDurationEdit}
               >
                 <Text
-                  className={`text-sm font-medium ${editingDuration ? 'text-blue-700' : 'text-gray-700'}`}
+                  className={`text-sm font-medium ${editingDuration ? 'text-app-accent' : 'text-app-text'}`}
                 >
                   Edit
                 </Text>
@@ -295,13 +299,13 @@ export function EntryEditModal({
                 />
                 <View className="mt-3 flex-row gap-2">
                   <Pressable
-                    className="rounded-lg border border-gray-300 px-4 py-2 active:bg-gray-50"
+                    className="rounded-lg border border-app-border bg-app-card px-4 py-2 active:bg-app-surface"
                     onPress={() => setEditingDuration(false)}
                   >
-                    <Text className="text-sm font-medium text-gray-700">Cancel</Text>
+                    <Text className="text-sm font-medium text-app-muted">Cancel</Text>
                   </Pressable>
                   <Pressable
-                    className="rounded-lg bg-blue-500 px-4 py-2 active:bg-blue-600"
+                    className="rounded-lg bg-app-accent px-4 py-2 active:bg-app-accent-pressed"
                     onPress={handleApplyDuration}
                   >
                     <Text className="text-sm font-semibold text-white">Set duration</Text>
@@ -311,7 +315,7 @@ export function EntryEditModal({
             ) : null}
           </View>
         ) : (
-          <Text className="mt-4 text-sm text-gray-500">Stop the task to adjust duration.</Text>
+          <Text className="mt-4 text-sm text-app-muted">Stop the task to adjust duration.</Text>
         )}
       </ModalPanel>
     </ModalShell>

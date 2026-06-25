@@ -104,7 +104,7 @@ export default function AppSettingsModal({
 
   return (
     <ModalShell visible={visible} onClose={handleClose} animationType="fade" align="top">
-      <View className="overflow-hidden rounded-xl bg-white shadow-lg" style={{ maxHeight: MENU_MAX_HEIGHT }}>
+      <View className="overflow-hidden rounded-2xl border border-app-border bg-app-card shadow-lg" style={{ maxHeight: MENU_MAX_HEIGHT }}>
         <SettingsMenuHeader
           title={screen === 'main' ? 'App Settings' : 'Backup'}
           onBack={screen === 'backup' ? goBackToMain : undefined}
@@ -118,16 +118,16 @@ export default function AppSettingsModal({
               {tripPlannerItems.map((item) => (
                 <Pressable
                   key={item.id}
-                  className="border-b border-gray-100 px-4 py-4 active:bg-gray-50"
+                  className="border-b border-app-border/60 px-4 py-4 active:bg-app-surface"
                   onPress={() => {
                     handleClose();
                     item.onPress();
                   }}
                 >
                   <View className="flex-row items-center justify-between gap-3">
-                    <Text className="flex-1 text-base text-gray-900">{item.label}</Text>
+                    <Text className="flex-1 text-base text-app-text">{item.label}</Text>
                     {item.value ? (
-                      <Text className="text-sm font-medium text-gray-500">{item.value}</Text>
+                      <Text className="text-sm font-medium text-app-muted">{item.value}</Text>
                     ) : null}
                   </View>
                 </Pressable>
@@ -146,7 +146,7 @@ export default function AppSettingsModal({
                 <SettingsStatusBanner type={restoreStatus.type} message={restoreStatus.message} />
               ) : null}
 
-              <Text className="border-b border-gray-100 px-4 py-3 text-xs leading-5 text-gray-500">
+              <Text className="border-b border-app-border/60 px-4 py-3 text-xs leading-5 text-app-muted">
                 {backupHint}
               </Text>
 
@@ -158,7 +158,7 @@ export default function AppSettingsModal({
                 disabled={backupBusy}
               />
 
-              <Text className="px-4 py-3 text-xs leading-5 text-gray-400">
+              <Text className="px-4 py-3 text-xs leading-5 text-app-dim">
                 {PERSISTENT_HINTS[persistentStatus] ?? PERSISTENT_HINTS.unsupported}
               </Text>
             </>
