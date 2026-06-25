@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { AppShell } from './Layout';
 import LocationList from './LocationList';
-import { SettingsGearButton } from './AppSettingsModal';
+import { SettingsGearButton } from './SettingsMenu';
 import {
   LocationAlarmModal,
   LocationFormModal,
@@ -55,8 +55,6 @@ export default function TripPlannerScreen({
   rushHourPeakEnd,
   onSaveLocation,
   onUpdateReadyTime,
-  onUpdateBufferTime,
-  onUpdateRushHourPeakTimes,
   onOpenSettings,
 }) {
   const [editingLocation, setEditingLocation] = useState(undefined);

@@ -130,18 +130,6 @@ export function buildEndDateFromHrMin(hours, minutes, startTime) {
   return end;
 }
 
-export function isEndTimeBeforeStart(hours, minutes, startTime) {
-  const h = Number(hours) || 0;
-  const m = Number(minutes) || 0;
-  if (h > 23 || m > 59) return false;
-
-  const start = new Date(startTime);
-  const end = new Date(start);
-  end.setSeconds(0, 0);
-  end.setHours(h, m, 0, 0);
-  return end.getTime() <= start.getTime();
-}
-
 export function dateToHrMinString(date) {
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return { hours: '', minutes: '' };

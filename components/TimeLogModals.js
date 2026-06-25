@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { confirmAction } from '../utils/confirm';
+import { confirmAction, showAlert } from '../utils/dialogs';
 import {
   buildEndDateFromHrMin,
   buildPastDateFromHrMin,
   getEntryDurationMinutes,
   hrMinToMinutes,
-  isEndTimeBeforeStart,
   minutesToHrMin,
 } from '../utils/time';
 import { hexWithAlpha } from '../utils/taskColors';
@@ -29,16 +28,18 @@ export function ClockTimeModal({ visible, mode, taskName, startTime, onSave, onC
   function handleSave() {
     if (mode === 'start') {
       const start = buildPastDateFromHrMin(hours, minutes);
-      if (!start) return;
-      onSave(start);
-    } else {
-      if (isEndTimeBeforeStart(hours, minutes, startTime)) {
-        Alert.alert('Invalid time', 'End time must be after the start time.');
+      if (!start) {
+        showAlert('Invalid time', 'Enter a valid start time (HR 0–23, MIN 0–59).');
         return;
       }
+      onSave(start);
+    } else {
       const end = buildEndDateFromHrMin(hours, minutes, startTime);
       if (!end) {
-        Alert.alert('Invalid time', 'End time must be after the start time and not in the future.');
+        showAlert(
+          'Invalid time',
+          'End time must be after the start time, not in the future, and within 24 hours of start.',
+        );
         return;
       }
       onSave(end);

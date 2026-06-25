@@ -28,11 +28,12 @@ function normalizeEntries(entries) {
   return entries.map((entry) => ({
     ...entry,
     createdAt: entry.createdAt ?? entry.startTime,
-    adjustedMinutes: entry.adjustedMinutes ?? (entry.adjusted ? 0 : 0),
+    adjustedMinutes: entry.adjustedMinutes ?? 0,
     isLiveTimer: entry.isLiveTimer ?? false,
   }));
 }
 
+/** Loads time log data. entriesRef keeps async saves in sync with the latest list. */
 export function useTimeLog() {
   const [taskTypes, setTaskTypes] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -57,7 +58,7 @@ export function useTimeLog() {
       const needsMigration = data.entries.some((e) => !e.createdAt);
       const normalized = normalizeEntries(data.entries);
       const { entries: cleaned, removed } = stripOver24hRunning(normalized);
-      if ((removed || needsMigration) && cleaned.length > 0) {
+      if (removed || needsMigration) {
         await saveTimeLogEntries(cleaned);
       }
       if (removed) {
@@ -250,14 +251,20 @@ export function useTimeLog() {
 
   const clearOver24hFlag = useCallback(() => setOver24hRemoved(false), []);
 
-  const visibleEntries = entries.slice(0, VISIBLE_ENTRY_LIMIT);
-  const hasMoreEntries = entries.length > VISIBLE_ENTRY_LIMIT;
+  const [visibleLimit, setVisibleLimit] = useState(VISIBLE_ENTRY_LIMIT);
+
+  const visibleEntries = entries.slice(0, visibleLimit);
+  const hasMoreEntries = entries.length > visibleLimit;
+  const loadMoreEntries = useCallback(() => {
+    setVisibleLimit((limit) => limit + VISIBLE_ENTRY_LIMIT);
+  }, []);
 
   return {
     taskTypes,
     entries,
     visibleEntries,
     hasMoreEntries,
+    loadMoreEntries,
     loading,
     runningEntry,
     over24hRemoved,

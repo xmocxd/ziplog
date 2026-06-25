@@ -4,8 +4,16 @@ import { Dimensions, Pressable, ScrollView, Text, View } from 'react-native';
 import { getPersistentStorageStatus } from '../storage/requestPersistentStorage';
 import { isWebIOS } from '../utils/platform';
 import { ModalShell } from './Layout';
+import {
+  SettingsInfoRow,
+  SettingsMenuHeader,
+  SettingsMenuRow,
+  SettingsSectionHeader,
+  SettingsStatusBanner,
+} from './SettingsMenu';
 
 const MENU_MAX_HEIGHT = Math.round(Dimensions.get('window').height * 0.65);
+const RESTORE_SUCCESS_DELAY_MS = 3000;
 
 const PERSISTENT_HINTS = {
   on: 'Your browser is less likely to clear ziplog data automatically.',
@@ -25,87 +33,6 @@ function formatLastBackup(iso) {
   }
 }
 
-function SectionHeader({ title }) {
-  return (
-    <Text className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-      {title}
-    </Text>
-  );
-}
-
-function MenuRow({ label, value, onPress, showChevron, disabled }) {
-  return (
-    <Pressable
-      className={`border-b border-gray-100 px-4 py-4 ${disabled ? 'opacity-50' : 'active:bg-gray-50'}`}
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-    >
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="flex-1 text-base text-gray-900">{label}</Text>
-        {value ? <Text className="text-sm font-medium text-gray-500">{value}</Text> : null}
-        {showChevron ? <Text className="text-base text-gray-400">›</Text> : null}
-      </View>
-    </Pressable>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <View className="border-b border-gray-100 px-4 py-4">
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="flex-1 text-base text-gray-900">{label}</Text>
-        <Text className="text-sm font-medium text-gray-500">{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function StatusBanner({ type, message }) {
-  const isSuccess = type === 'success';
-  return (
-    <View
-      className={`border-b px-4 py-3 ${isSuccess ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}
-    >
-      <Text className={`text-sm font-medium ${isSuccess ? 'text-green-800' : 'text-red-800'}`}>
-        {message}
-      </Text>
-      {isSuccess ? (
-        <Text className="mt-1 text-xs text-green-700">Returning to settings…</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function SettingsHeader({ title, onBack, onClose }) {
-  return (
-    <View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-3">
-      <View className="min-w-[56px] flex-row items-center">
-        {onBack ? (
-          <Pressable onPress={onBack} className="px-1 py-1 active:opacity-60">
-            <Text className="text-sm font-medium text-blue-600">‹ Back</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      <Text className="text-base font-semibold text-gray-900">{title}</Text>
-      <Pressable onPress={onClose} className="min-w-[56px] items-end px-2 py-1 active:opacity-60">
-        <Text className="text-sm font-medium text-blue-600">Done</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-export function SettingsGearButton({ onPress }) {
-  return (
-    <Pressable
-      className="rounded-lg border border-gray-300 px-3 py-2 active:bg-gray-100"
-      onPress={onPress}
-      accessibilityLabel="App settings"
-    >
-      <Text className="text-lg text-gray-700">⚙</Text>
-    </Pressable>
-  );
-}
-
 export default function AppSettingsModal({
   visible,
   onClose,
@@ -119,86 +46,75 @@ export default function AppSettingsModal({
   const [persistentStatus, setPersistentStatus] = useState('unsupported');
   const [restoreStatus, setRestoreStatus] = useState(null);
   const restoreTimerRef = useRef(null);
-  const iosWeb = isWebIOS();
+
+  function clearRestoreTimer() {
+    if (restoreTimerRef.current) {
+      clearTimeout(restoreTimerRef.current);
+      restoreTimerRef.current = null;
+    }
+  }
+
+  function resetRestoreUi() {
+    setRestoreStatus(null);
+    clearRestoreTimer();
+  }
+
+  function handleClose() {
+    setScreen('main');
+    resetRestoreUi();
+    onClose();
+  }
+
+  function goBackToMain() {
+    resetRestoreUi();
+    setScreen('main');
+  }
 
   useEffect(() => {
     if (!visible) {
       setScreen('main');
-      setRestoreStatus(null);
-      if (restoreTimerRef.current) {
-        clearTimeout(restoreTimerRef.current);
-        restoreTimerRef.current = null;
-      }
+      resetRestoreUi();
       return;
     }
     getPersistentStorageStatus().then(setPersistentStatus);
   }, [visible]);
 
-  useEffect(() => {
-    return () => {
-      if (restoreTimerRef.current) {
-        clearTimeout(restoreTimerRef.current);
-      }
-    };
-  }, []);
-
-  function handleClose() {
-    setScreen('main');
-    setRestoreStatus(null);
-    if (restoreTimerRef.current) {
-      clearTimeout(restoreTimerRef.current);
-      restoreTimerRef.current = null;
-    }
-    onClose();
-  }
+  useEffect(() => () => clearRestoreTimer(), []);
 
   async function handleRestorePress() {
-    setRestoreStatus(null);
-    if (restoreTimerRef.current) {
-      clearTimeout(restoreTimerRef.current);
-      restoreTimerRef.current = null;
-    }
-
+    resetRestoreUi();
     const result = await onRestore();
     if (!result || result.cancelled) return;
 
     if (result.ok) {
       setRestoreStatus({ type: 'success', message: result.message });
       restoreTimerRef.current = setTimeout(() => {
-        setRestoreStatus(null);
+        resetRestoreUi();
         setScreen('main');
-        restoreTimerRef.current = null;
-      }, 3000);
+      }, RESTORE_SUCCESS_DELAY_MS);
       return;
     }
 
     setRestoreStatus({ type: 'error', message: result.message });
   }
 
+  const backupHint = isWebIOS()
+    ? 'Tap Back up now and choose Save to Files to keep a copy outside Safari. Use Restore if you reinstall or clear website data.'
+    : 'Export a JSON backup to save your data outside the browser. Restore replaces all locations, trip settings, and time log entries on this device.';
+
   return (
     <ModalShell visible={visible} onClose={handleClose} animationType="fade" align="top">
       <View className="overflow-hidden rounded-xl bg-white shadow-lg" style={{ maxHeight: MENU_MAX_HEIGHT }}>
-        <SettingsHeader
+        <SettingsMenuHeader
           title={screen === 'main' ? 'App Settings' : 'Backup'}
-          onBack={
-            screen === 'backup'
-              ? () => {
-                  setRestoreStatus(null);
-                  if (restoreTimerRef.current) {
-                    clearTimeout(restoreTimerRef.current);
-                    restoreTimerRef.current = null;
-                  }
-                  setScreen('main');
-                }
-              : undefined
-          }
+          onBack={screen === 'backup' ? goBackToMain : undefined}
           onClose={handleClose}
         />
 
         <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
           {screen === 'main' ? (
             <>
-              <SectionHeader title="Trip Planner" />
+              <SettingsSectionHeader title="Trip Planner" />
               {tripPlannerItems.map((item) => (
                 <Pressable
                   key={item.id}
@@ -217,8 +133,8 @@ export default function AppSettingsModal({
                 </Pressable>
               ))}
 
-              <SectionHeader title="Data" />
-              <MenuRow
+              <SettingsSectionHeader title="Data" />
+              <SettingsMenuRow
                 label="Backup & restore"
                 onPress={() => setScreen('backup')}
                 showChevron
@@ -227,28 +143,16 @@ export default function AppSettingsModal({
           ) : (
             <>
               {restoreStatus ? (
-                <StatusBanner type={restoreStatus.type} message={restoreStatus.message} />
+                <SettingsStatusBanner type={restoreStatus.type} message={restoreStatus.message} />
               ) : null}
 
-              {iosWeb ? (
-                <Text className="border-b border-gray-100 px-4 py-3 text-xs leading-5 text-gray-500">
-                  Tap Back up now and choose Save to Files to keep a copy outside Safari. Use Restore
-                  if you reinstall or clear website data.
-                </Text>
-              ) : (
-                <Text className="border-b border-gray-100 px-4 py-3 text-xs leading-5 text-gray-500">
-                  Export a JSON backup to save your data outside the browser. Restore replaces all
-                  locations, trip settings, and time log entries on this device.
-                </Text>
-              )}
+              <Text className="border-b border-gray-100 px-4 py-3 text-xs leading-5 text-gray-500">
+                {backupHint}
+              </Text>
 
-              <InfoRow label="Last backup" value={formatLastBackup(lastBackupAt)} />
-              <MenuRow
-                label="Back up now"
-                onPress={onBackupNow}
-                disabled={backupBusy}
-              />
-              <MenuRow
+              <SettingsInfoRow label="Last backup" value={formatLastBackup(lastBackupAt)} />
+              <SettingsMenuRow label="Back up now" onPress={onBackupNow} disabled={backupBusy} />
+              <SettingsMenuRow
                 label="Restore from backup"
                 onPress={handleRestorePress}
                 disabled={backupBusy}

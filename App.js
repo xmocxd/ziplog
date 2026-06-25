@@ -1,6 +1,6 @@
 import './global.css';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,12 +14,10 @@ import {
 import TimeLogScreen from './components/TimeLogScreen';
 import TripPlannerScreen from './components/TripPlannerScreen';
 import { useAppData } from './hooks/useAppData';
+import { useBackup } from './hooks/useBackup';
 import { useTimeLog } from './hooks/useTimeLog';
-import { exportAllData, importAllData, pickBackupFile, shareOrDownloadBackup } from './storage/backup';
 import { prepareStorage } from './storage/forceFirstRun';
 import { requestPersistentStorage } from './storage/requestPersistentStorage';
-import { loadSettings, saveLastBackupAt } from './storage/settingsStore';
-import { confirmAction } from './utils/confirm';
 import { formatDuration } from './utils/time';
 
 export default function App() {
@@ -55,117 +53,40 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('timelog');
   const [addBlockOpen, setAddBlockOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [readyTimeOpen, setReadyTimeOpen] = useState(false);
-  const [bufferTimeOpen, setBufferTimeOpen] = useState(false);
-  const [rushHourPeakOpen, setRushHourPeakOpen] = useState(false);
-  const [lastBackupAt, setLastBackupAt] = useState(null);
-  const [backupBusy, setBackupBusy] = useState(false);
-  const backupInFlight = useRef(false);
+  const [tripSettingModal, setTripSettingModal] = useState(null);
 
   const timeLog = useTimeLog();
-  const {
-    locations,
-    loading,
-    readyTimeOffsetMinutes,
-    bufferTimeMinutes,
-    rushHourPeakStart,
-    rushHourPeakEnd,
-    addLocation,
-    updateLocation,
-    updateReadyTimeOffset,
-    updateBufferTime,
-    updateRushHourPeakTimes,
-    reload: reloadAppData,
-  } = useAppData();
-
-  useEffect(() => {
-    loadSettings()
-      .then((settings) => setLastBackupAt(settings.lastBackupAt))
-      .catch((error) => console.error('Failed to load settings:', error));
-  }, []);
-
-  async function handleSaveLocation(data) {
-    if (data.id) await updateLocation(data);
-    else await addLocation(data);
-  }
-
-  async function handleBackupNow() {
-    if (backupInFlight.current) return;
-    backupInFlight.current = true;
-    try {
-      const data = await exportAllData();
-      setBackupBusy(true);
-      const result = await shareOrDownloadBackup(data);
-      if (result.ok) {
-        const at = new Date().toISOString();
-        await saveLastBackupAt(at);
-        setLastBackupAt(at);
-      }
-    } catch (error) {
-      console.error('Backup failed:', error);
-      Alert.alert('Backup failed', 'Could not save the backup file. Try again.');
-    } finally {
-      backupInFlight.current = false;
-      setBackupBusy(false);
-    }
-  }
-
-  async function handleRestore() {
-    const picked = await pickBackupFile();
-    if (!picked.ok) {
-      if (picked.reason === 'invalid') {
-        return {
-          ok: false,
-          message: 'Could not read that file. Choose a ziplog backup JSON file.',
-        };
-      }
-      return { ok: false, cancelled: true };
-    }
-
-    const confirmed = await confirmAction({
-      title: 'Restore backup?',
-      message: 'This replaces all locations, trip settings, and time log data on this device.',
-      confirmLabel: 'Restore',
-      destructive: true,
-    });
-    if (!confirmed) return { ok: false, cancelled: true };
-
-    setBackupBusy(true);
-    try {
-      await importAllData(picked.data);
-      await Promise.all([reloadAppData(), timeLog.reload()]);
-      return { ok: true, message: 'Backup restored successfully.' };
-    } catch (error) {
-      console.error('Restore failed:', error);
-      return {
-        ok: false,
-        message: error.message || 'Could not restore that backup.',
-      };
-    } finally {
-      setBackupBusy(false);
-    }
-  }
+  const appData = useAppData();
+  const backup = useBackup({
+    reloadAppData: appData.reload,
+    reloadTimeLog: timeLog.reload,
+  });
 
   const tripPlannerMenuItems = [
     {
-      id: 'edit-ready-time',
+      id: 'ready-time',
       label: 'Get-Ready Time',
-      value: formatDuration(readyTimeOffsetMinutes ?? 30),
-      onPress: () => setReadyTimeOpen(true),
+      value: formatDuration(appData.readyTimeOffsetMinutes ?? 30),
+      onPress: () => setTripSettingModal('ready'),
     },
     {
-      id: 'edit-buffer-time',
+      id: 'buffer-time',
       label: 'Buffer Time',
-      value: formatDuration(bufferTimeMinutes ?? 10),
-      onPress: () => setBufferTimeOpen(true),
+      value: formatDuration(appData.bufferTimeMinutes ?? 10),
+      onPress: () => setTripSettingModal('buffer'),
     },
     {
-      id: 'edit-rush-hour-peak',
+      id: 'rush-hour',
       label: 'Rush Hour Peak',
-      value: `${rushHourPeakStart}–${rushHourPeakEnd}`,
-      onPress: () => setRushHourPeakOpen(true),
+      value: `${appData.rushHourPeakStart}–${appData.rushHourPeakEnd}`,
+      onPress: () => setTripSettingModal('rush'),
     },
   ];
+
+  async function handleSaveLocation(data) {
+    if (data.id) await appData.updateLocation(data);
+    else await appData.addLocation(data);
+  }
 
   return (
     <SafeAreaView className="flex-1 items-center bg-gray-50" edges={['top', 'left', 'right']}>
@@ -180,18 +101,17 @@ function AppContent() {
             {...timeLog}
           />
         </View>
+
         <View className="flex-1" style={{ display: activeTab === 'planner' ? 'flex' : 'none' }}>
           <TripPlannerScreen
-            locations={locations}
-            loading={loading}
-            readyTimeOffsetMinutes={readyTimeOffsetMinutes}
-            bufferTimeMinutes={bufferTimeMinutes}
-            rushHourPeakStart={rushHourPeakStart}
-            rushHourPeakEnd={rushHourPeakEnd}
+            locations={appData.locations}
+            loading={appData.loading}
+            readyTimeOffsetMinutes={appData.readyTimeOffsetMinutes}
+            bufferTimeMinutes={appData.bufferTimeMinutes}
+            rushHourPeakStart={appData.rushHourPeakStart}
+            rushHourPeakEnd={appData.rushHourPeakEnd}
             onSaveLocation={handleSaveLocation}
-            onUpdateReadyTime={updateReadyTimeOffset}
-            onUpdateBufferTime={updateBufferTime}
-            onUpdateRushHourPeakTimes={updateRushHourPeakTimes}
+            onUpdateReadyTime={appData.updateReadyTimeOffset}
             onOpenSettings={() => setSettingsOpen(true)}
           />
         </View>
@@ -209,33 +129,33 @@ function AppContent() {
       <AppSettingsModal
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        lastBackupAt={lastBackupAt}
-        onBackupNow={handleBackupNow}
-        onRestore={handleRestore}
+        lastBackupAt={backup.lastBackupAt}
+        onBackupNow={backup.backupNow}
+        onRestore={backup.restore}
         tripPlannerItems={tripPlannerMenuItems}
-        backupBusy={backupBusy}
+        backupBusy={backup.busy}
       />
 
       <ReadyTimeModal
-        visible={readyTimeOpen}
-        readyTimeOffsetMinutes={readyTimeOffsetMinutes}
-        onSave={updateReadyTimeOffset}
-        onClose={() => setReadyTimeOpen(false)}
+        visible={tripSettingModal === 'ready'}
+        readyTimeOffsetMinutes={appData.readyTimeOffsetMinutes}
+        onSave={appData.updateReadyTimeOffset}
+        onClose={() => setTripSettingModal(null)}
       />
 
       <BufferTimeModal
-        visible={bufferTimeOpen}
-        bufferTimeMinutes={bufferTimeMinutes}
-        onSave={updateBufferTime}
-        onClose={() => setBufferTimeOpen(false)}
+        visible={tripSettingModal === 'buffer'}
+        bufferTimeMinutes={appData.bufferTimeMinutes}
+        onSave={appData.updateBufferTime}
+        onClose={() => setTripSettingModal(null)}
       />
 
       <RushHourPeakModal
-        visible={rushHourPeakOpen}
-        rushHourPeakStart={rushHourPeakStart}
-        rushHourPeakEnd={rushHourPeakEnd}
-        onSave={updateRushHourPeakTimes}
-        onClose={() => setRushHourPeakOpen(false)}
+        visible={tripSettingModal === 'rush'}
+        rushHourPeakStart={appData.rushHourPeakStart}
+        rushHourPeakEnd={appData.rushHourPeakEnd}
+        onSave={appData.updateRushHourPeakTimes}
+        onClose={() => setTripSettingModal(null)}
       />
     </SafeAreaView>
   );

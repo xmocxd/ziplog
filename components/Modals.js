@@ -41,7 +41,7 @@ export function LocationFormModal({ visible, initialLocation, onSave, onClose })
 
   function handleSave() {
     if (!trimmedName) return;
-    const rushHourAllowanceMinutes = hrMinToMinutes(hours, minutes) || 60;
+    const rushHourAllowanceMinutes = hrMinToMinutes(hours, minutes);
     onSave({ id: initialLocation?.id, name: trimmedName, rushHourAllowanceMinutes });
     onClose();
   }
@@ -325,6 +325,13 @@ export function RushHourPeakModal({ visible, rushHourPeakStart, rushHourPeakEnd,
       return;
     }
 
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+    if (endTotal <= startTotal) {
+      setError('Peak end must be after peak start.');
+      return;
+    }
+
     await onSave(formatClockTimeValue(startH, startM), formatClockTimeValue(endH, endM));
     onClose();
   }
@@ -359,46 +366,5 @@ export function RushHourPeakModal({ visible, rushHourPeakStart, rushHourPeakEnd,
         {error ? <Text className="mt-3 text-sm text-red-600">{error}</Text> : null}
       </ModalPanel>
     </ModalShell>
-  );
-}
-
-export function AppMenu({ items }) {
-  const [visible, setVisible] = useState(false);
-
-  return (
-    <>
-      <Pressable
-        className="rounded-lg border border-gray-300 px-3 py-2 active:bg-gray-100"
-        onPress={() => setVisible(true)}
-        accessibilityLabel="Settings"
-      >
-        <Text className="text-lg text-gray-700">⚙</Text>
-      </Pressable>
-
-      <ModalShell visible={visible} onClose={() => setVisible(false)} animationType="fade" align="top">
-        <View className="overflow-hidden rounded-xl bg-white shadow-lg">
-          <Text className="border-b border-gray-200 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Settings
-          </Text>
-          {items.map((item, index) => (
-            <Pressable
-              key={item.id}
-              className={`px-4 py-4 active:bg-gray-50 ${index < items.length - 1 ? 'border-b border-gray-100' : ''}`}
-              onPress={() => {
-                setVisible(false);
-                item.onPress();
-              }}
-            >
-              <View className="flex-row items-center justify-between gap-3">
-                <Text className="flex-1 text-base text-gray-900">{item.label}</Text>
-                {item.value ? (
-                  <Text className="text-sm font-medium text-gray-500">{item.value}</Text>
-                ) : null}
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      </ModalShell>
-    </>
   );
 }

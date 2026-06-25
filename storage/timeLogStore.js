@@ -1,16 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { colorForTaskIndex } from '../utils/taskColors';
-
-const KEYS = {
-  TASK_TYPES: '@ziplog/taskTypes',
-  TIME_LOG_ENTRIES: '@ziplog/timeLogEntries',
-};
-
-function createId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
+import { STORAGE_KEYS } from './keys';
+import { createId, readJson } from './shared';
 
 export function defaultTaskTypes() {
   return [
@@ -19,33 +11,23 @@ export function defaultTaskTypes() {
   ];
 }
 
-async function readJson(key, fallback) {
-  const raw = await AsyncStorage.getItem(key);
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
 export async function loadTimeLogData() {
-  let taskTypes = await readJson(KEYS.TASK_TYPES, null);
+  let taskTypes = await readJson(STORAGE_KEYS.taskTypes, null);
   if (!taskTypes?.length) {
     taskTypes = defaultTaskTypes();
-    await AsyncStorage.setItem(KEYS.TASK_TYPES, JSON.stringify(taskTypes));
+    await AsyncStorage.setItem(STORAGE_KEYS.taskTypes, JSON.stringify(taskTypes));
   }
 
-  const entries = await readJson(KEYS.TIME_LOG_ENTRIES, []);
+  const entries = await readJson(STORAGE_KEYS.timeLogEntries, []);
   return { taskTypes, entries };
 }
 
 async function saveEntries(entries) {
   const payload = JSON.stringify(entries);
-  await AsyncStorage.setItem(KEYS.TIME_LOG_ENTRIES, payload);
+  await AsyncStorage.setItem(STORAGE_KEYS.timeLogEntries, payload);
 
   if (__DEV__) {
-    const saved = await AsyncStorage.getItem(KEYS.TIME_LOG_ENTRIES);
+    const saved = await AsyncStorage.getItem(STORAGE_KEYS.timeLogEntries);
     if (saved !== payload) {
       throw new Error('Time log entries failed to persist to storage');
     }
@@ -81,6 +63,6 @@ export async function saveTimeLogEntries(entries) {
 }
 
 export async function saveTaskTypes(taskTypes) {
-  await AsyncStorage.setItem(KEYS.TASK_TYPES, JSON.stringify(taskTypes));
+  await AsyncStorage.setItem(STORAGE_KEYS.taskTypes, JSON.stringify(taskTypes));
   return taskTypes;
 }

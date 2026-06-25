@@ -17,25 +17,28 @@ export function useAppData() {
   const [rushHourPeakEnd, setRushHourPeakEnd] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    loadAppData()
-      .then((data) => {
-        if (!active) return;
-        setLocations(data.locations);
-        setReadyTimeOffsetMinutes(data.readyTimeOffsetMinutes);
-        setBufferTimeMinutes(data.bufferTimeMinutes);
-        setRushHourPeakStart(data.rushHourPeakStart);
-        setRushHourPeakEnd(data.rushHourPeakEnd);
-      })
-      .catch((error) => console.error('Failed to load app data:', error))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+  const applyLoadedData = useCallback((data) => {
+    setLocations(data.locations);
+    setReadyTimeOffsetMinutes(data.readyTimeOffsetMinutes);
+    setBufferTimeMinutes(data.bufferTimeMinutes);
+    setRushHourPeakStart(data.rushHourPeakStart);
+    setRushHourPeakEnd(data.rushHourPeakEnd);
   }, []);
+
+  const loadFromStorage = useCallback(async () => {
+    setLoading(true);
+    try {
+      applyLoadedData(await loadAppData());
+    } catch (error) {
+      console.error('Failed to load app data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [applyLoadedData]);
+
+  useEffect(() => {
+    loadFromStorage();
+  }, [loadFromStorage]);
 
   const addLocation = useCallback(async ({ name, rushHourAllowanceMinutes }) => {
     const location = createLocation({ name, rushHourAllowanceMinutes });
@@ -47,35 +50,17 @@ export function useAppData() {
   }, []);
 
   const updateReadyTimeOffset = useCallback(async (minutes) => {
-    const saved = await saveReadyTimeOffsetMinutes(minutes);
-    setReadyTimeOffsetMinutes(saved);
+    setReadyTimeOffsetMinutes(await saveReadyTimeOffsetMinutes(minutes));
   }, []);
 
   const updateBufferTime = useCallback(async (minutes) => {
-    const saved = await saveBufferTimeMinutes(minutes);
-    setBufferTimeMinutes(saved);
+    setBufferTimeMinutes(await saveBufferTimeMinutes(minutes));
   }, []);
 
   const updateRushHourPeakTimes = useCallback(async (start, end) => {
     const saved = await saveRushHourPeakTimes(start, end);
     setRushHourPeakStart(saved.rushHourPeakStart);
     setRushHourPeakEnd(saved.rushHourPeakEnd);
-  }, []);
-
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await loadAppData();
-      setLocations(data.locations);
-      setReadyTimeOffsetMinutes(data.readyTimeOffsetMinutes);
-      setBufferTimeMinutes(data.bufferTimeMinutes);
-      setRushHourPeakStart(data.rushHourPeakStart);
-      setRushHourPeakEnd(data.rushHourPeakEnd);
-    } catch (error) {
-      console.error('Failed to reload app data:', error);
-    } finally {
-      setLoading(false);
-    }
   }, []);
 
   return {
@@ -90,6 +75,6 @@ export function useAppData() {
     updateReadyTimeOffset,
     updateBufferTime,
     updateRushHourPeakTimes,
-    reload,
+    reload: loadFromStorage,
   };
 }

@@ -1,3 +1,5 @@
+import { ALL_ZIPLOG_KEYS } from './keys';
+
 const FRESH_ENV = 'EXPO_PUBLIC_FORCE_FIRST_RUN';
 const FRESH_SESSION_ENV = 'EXPO_PUBLIC_ZIPLOG_FRESH_SESSION';
 
@@ -6,17 +8,6 @@ const TAB_CLEARED_KEY = 'ziplog_fresh_tab_cleared';
 let clearInFlight = null;
 let clearedNativeSessionId = null;
 
-const ALL_ZIPLOG_KEYS = [
-  '@ziplog/initialized',
-  '@ziplog/locations',
-  '@ziplog/readyTimeOffsetMinutes',
-  '@ziplog/bufferTimeMinutes',
-  '@ziplog/rushHourPeakStart',
-  '@ziplog/rushHourPeakEnd',
-  '@ziplog/taskTypes',
-  '@ziplog/timeLogEntries',
-];
-
 export function isForceFirstRunMode() {
   if (!__DEV__) return false;
   const value = process.env[FRESH_ENV];
@@ -24,8 +15,7 @@ export function isForceFirstRunMode() {
 }
 
 function getFreshSessionId() {
-  const value = process.env[FRESH_SESSION_ENV];
-  return value || null;
+  return process.env[FRESH_SESSION_ENV] || null;
 }
 
 function alreadyClearedForCurrentFreshSession() {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   computeDayCategoryTotals,
@@ -11,8 +11,10 @@ import {
   getEntryDurationMinutes,
   groupEntriesByDay,
 } from '../utils/time';
+import { showAlert } from '../utils/dialogs';
+import { showTimeLogMessage } from '../utils/timeLogMessages';
 import { useRunningElapsedMinutes } from '../hooks/useRunningMinuteTick';
-import { SettingsGearButton } from './AppSettingsModal';
+import { SettingsGearButton } from './SettingsMenu';
 import { AppShell } from './Layout';
 import { ClockTimeModal, EntryEditModal, ManualBlockModal } from './TimeLogModals';
 import { TaskSplitButton } from './TimeLogParts';
@@ -113,6 +115,7 @@ export default function TimeLogScreen({
   entries,
   visibleEntries,
   hasMoreEntries,
+  loadMoreEntries,
   loading,
   runningEntry,
   over24hRemoved,
@@ -140,10 +143,10 @@ export default function TimeLogScreen({
 
   useEffect(() => {
     if (!over24hRemoved) return;
-    Alert.alert(
+    showAlert(
       'Task removed',
       'A running task exceeded 24 hours and was removed as a possible error.',
-      [{ text: 'OK', onPress: clearOver24hFlag }],
+      { onDismiss: clearOver24hFlag },
     );
   }, [over24hRemoved, clearOver24hFlag]);
 
@@ -151,16 +154,15 @@ export default function TimeLogScreen({
     const isRunning = runningEntry?.taskTypeId === taskType.id;
     if (isRunning) {
       const result = await stopTask(taskType.id);
-      if (result.reason === 'over24h') {
-        Alert.alert('Task removed', 'This task exceeded 24 hours and was removed as a possible error.');
-      }
+      if (result.reason === 'over24h') showTimeLogMessage('over24h_stop');
       return;
     }
     if (runningEntry) {
-      Alert.alert('Task already running', 'Stop the current task before starting another.');
+      showTimeLogMessage('running');
       return;
     }
-    await startTask(taskType.id);
+    const result = await startTask(taskType.id);
+    if (result?.reason === 'future') showTimeLogMessage('future');
   }
 
   async function handleClockSave(time) {
@@ -168,46 +170,35 @@ export default function TimeLogScreen({
     const { taskType, mode } = clockModal;
     if (mode === 'start') {
       if (runningEntry) {
-        Alert.alert('Task already running', 'Stop the current task before starting another.');
+        showTimeLogMessage('running');
         return;
       }
       const result = await startTask(taskType.id, time);
-      if (result.reason === 'over24h') {
-        Alert.alert('Invalid time', 'Start time cannot be more than 24 hours ago.');
-      }
+      if (result?.reason === 'over24h') showTimeLogMessage('start_over24h');
+      else if (result?.reason === 'future') showTimeLogMessage('future');
     } else {
       const result = await stopTask(taskType.id, time);
-      if (result.reason === 'over24h') {
-        Alert.alert('Task removed', 'That end time exceeds 24 hours and the entry was removed.');
-      } else if (result.reason === 'before-start') {
-        Alert.alert('Invalid time', 'End time must be after the start time.');
-      }
+      if (result.reason === 'over24h') showTimeLogMessage('over24h_end');
+      else if (result.reason === 'before-start') showTimeLogMessage('before_start');
     }
   }
 
   async function handleManualBlock(taskTypeId, minutes) {
     const result = await addManualBlock(taskTypeId, minutes);
-    if (result.reason === 'over24h') {
-      Alert.alert('Too long', 'A single entry cannot exceed 24 hours.');
-    }
+    if (result.reason === 'over24h') showTimeLogMessage('block_over24h');
   }
 
   async function handleAdjust(delta) {
     if (!editingEntryId) return;
     const result = await adjustEntryDuration(editingEntryId, delta);
-    if (result?.reason === 'over24h') {
-      Alert.alert('Too long', 'A single entry cannot exceed 24 hours.');
-    }
+    if (result?.reason === 'over24h') showTimeLogMessage('duration_over24h');
   }
 
   async function handleSetDuration(totalMinutes) {
     if (!editingEntryId) return;
     const result = await setEntryDuration(editingEntryId, totalMinutes);
-    if (result?.reason === 'over24h') {
-      Alert.alert('Too long', 'A single entry cannot exceed 24 hours.');
-    } else if (result?.reason === 'below_min') {
-      Alert.alert('Too short', 'Duration must be at least 1 minute.');
-    }
+    if (result?.reason === 'over24h') showTimeLogMessage('duration_over24h');
+    else if (result?.reason === 'below_min') showTimeLogMessage('duration_below_min');
   }
 
   async function handleRename(name) {
@@ -265,7 +256,10 @@ export default function TimeLogScreen({
                   );
                 })}
                 {hasMoreEntries ? (
-                  <Pressable className="items-center py-3 active:opacity-70">
+                  <Pressable
+                    className="items-center py-3 active:opacity-70"
+                    onPress={loadMoreEntries}
+                  >
                     <Text className="text-sm font-semibold text-blue-600">More...</Text>
                   </Pressable>
                 ) : null}
